@@ -9,7 +9,7 @@ from rllab.baselines.linear_feature_baseline import LinearFeatureBaseline
 # Environment
 # from rllab.envs.grid_world_env import GridWorldEnv
 # from sandbox.asl.envs.simple_grid_env import GridWorldObsEnv
-from sandbox.asl.envs.grid_maze_env import GridMazeEnv, GridMazeEnv2
+from sandbox.asl.envs.grid_maze_env import GridMazeEnv
 from rllab.envs.normalized_env import normalize
 
 # Policy network
@@ -32,7 +32,7 @@ def run_task(*_):
         ]
     
 #     env = normalize(GridWorldObsEnv(desc=square_maze))
-    env = normalize(GridMazeEnv2(plot={'dontsave':'~/rllab/data/local/asl-example/instant-run', 'live':1}))
+    env = normalize(GridMazeEnv(plot={'dontsave':'~/rllab/data/local/asl-example/instant-run', 'live':1}))
 
     policy = CategoricalMLPPolicy(
         env_spec=env.spec,
@@ -48,7 +48,7 @@ def run_task(*_):
         baseline=baseline,
         batch_size=1000,
         max_path_length=100,
-        n_itr=30,
+        n_itr=50,
         discount=0.99,
         step_size=0.01,
         # Uncomment both lines (this and the plot parameter below) to enable plotting
