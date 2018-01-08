@@ -18,10 +18,10 @@ from rllab.policies.categorical_mlp_policy import CategoricalMLPPolicy
 # Experiment-running util
 from rllab.misc.instrument import run_experiment_lite
 
-
+subdir, use_maps = None, None
 def run_task(*_):
-    env = normalize(GridMazeEnv(plot={'dontsave':'~/rllab/data/local/asl-example/instant-run', 'live':1},
-                                use_maps=[0,1,2]
+    env = normalize(GridMazeEnv(plot={'save':'~/rllab/data/local/'+subdir},
+                                use_maps=use_maps
                                 ))
 
     policy = CategoricalMLPPolicy(
@@ -41,24 +41,22 @@ def run_task(*_):
         n_itr=30,
         discount=0.99,
         step_size=0.01,
-        # Uncomment both lines (this and the plot parameter below) to enable plotting
-        #plot=True
     )
     algo.train()
 
-# Run directly
-run_task()
-input('< Press Enter to quit >')
-
-# # Run pickled
-# run_experiment_lite(
-#     run_task,
-#     exp_prefix='asl-example',
-#     # Number of parallel workers for sampling
-#     n_parallel=2,
-#     # Only keep the snapshot parameters for the last iteration
-#     snapshot_mode="last",
-#     # Specifies the seed for the experiment. If this is not provided, a random seed will be used
-#     seed=1,
-# #     plot=True
-# )
+for maps, suffix in [([0,1], 'easy'), ([2], 'hard'), ([0,1,2], 'both')]:
+    for seed in [10, 20, 30, 40, 50]:
+        use_maps = maps
+        l_subdir = 'asl-compare-maps/{}_{}'.format(suffix, seed)
+        subdir = l_subdir
+        # Run pickled
+        run_experiment_lite(
+            run_task,
+            exp_name=l_subdir,
+            # Number of parallel workers for sampling
+            n_parallel=2,
+            # Only keep the snapshot parameters for the last iteration
+            snapshot_mode="last",
+            # Specifies the seed for the experiment. If this is not provided, a random seed will be used
+            seed=seed,
+        )

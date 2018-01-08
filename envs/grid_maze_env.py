@@ -16,38 +16,61 @@ import matplotlib.pyplot as plt
 
 class GridMazeEnv(Env, Serializable):
     '''
-    'S' : starting point
-    'F' / '.' / ' ': free space
-    'W' / 'x' / '#': wall
-    'H' / 'O': hole (terminates episode)
-    'G' : goal
+    Maps legend:
+        'S' : starting point
+        'F' / '.' / ' ': free space
+        'W' / 'x' / '#': wall
+        'H' / 'O': hole (terminates episode)
+        'G' : goal
+    
+    Action map:
+        0: turn left
+        1: step
+        2: turn right
+    
+    Orientations map:
+        0: up
+        1: right
+        2: down
+        3: left
     '''
-    maps = [
-        ["........",
-         "........",
-         "........",
-         "...##...",
-         "...##...",
-         "...##...",
-         "..s##g..",
-         "...##..."
-        ],
-        ["........",
+    
+    all_maps = [
+        ["........", # min = 11 actions
          "........",
          "........",
          "........",
-         "...##...",
+         "........",
          "...##...",
          "...##...",
          "..S##G.."
+        ],
+        ["........", # min = 13 actions
+         "........",
+         "...##...",
+         "...##...",
+         "...##...",
+         "...##...",
+         "..S##G..",
+         "...##..."
+        ],
+        ["........", # min = 21 actions
+         "........",
+         "...###..",
+         "..S###..",
+         "...###..",
+         "######..",
+         "..G###..",
+         "........"
         ]
     ]
     map_colors = ['maroon', 'midnightblue', 'darkgreen', 'darkgoldenrod']
 
-    def __init__(self, obs_dist=2, plot=None):
+    def __init__(self, obs_dist=2, plot=None, use_maps='all'):
         '''
         :param obs_dist: how far agent sees, Manhattan distance from agent, default=2
         :param plot: {'save':<path>, 'live':<bool>, 'alpha':<0..1>}
+        :param use_maps: which maps to use, list of indexes or 'all'
         '''
         Serializable.quick_init(self, locals())
         
@@ -58,6 +81,10 @@ class GridMazeEnv(Env, Serializable):
         self.agent_ori = None
         
         # Maps initialization
+        if use_maps == 'all':
+            self.maps = self.all_maps
+        else:
+            self.maps = [self.all_maps[i] for i in use_maps]
         self.bit_maps = []
         for i in range(len(self.maps)):
             # Normalize char map
@@ -86,14 +113,23 @@ class GridMazeEnv(Env, Serializable):
 
     @property
     def action_space(self):
-        return Discrete(4)
+        '''
+        turn left / step / turn right
+        '''
+        return Discrete(3)
 
     @property
     def observation_space(self):
+        '''
+        0 = free space, 1 = wall/hole
+        '''
         return Box(low=0., high=1., shape=(self.obs_wide, self.obs_wide))
 
 
     def reset(self):
+        '''
+        Choose random map for this rollout, init agent facing north.
+        '''
         self.current_map_idx = np.random.choice(len(self.maps))
         m = self.maps[self.current_map_idx]
         (start_r,), (start_c,) = np.nonzero(m == 'S')
@@ -104,13 +140,11 @@ class GridMazeEnv(Env, Serializable):
 
     def step(self, action):
         '''
-        action map:
-        0: left
-        1: down
-        2: right
-        3: up
-        :param action: should be a one-hot vector encoding the action
-        :return:
+        Action map:
+            0: turn left
+            1: step
+            2: turn right
+        :param action: scalar encoding the action
         '''
         # Get next state possibilities
         possible_next_states = self.get_possible_next_states(action)
@@ -144,40 +178,70 @@ class GridMazeEnv(Env, Serializable):
 
     def get_possible_next_states(self, action):
         '''
-        Using current state and given action, return a list of possible next states and their probabilities.
-        Only next states with nonzero probabilities will be returned.
-        :param action: action
+        Using current state and given action, return a list of possible next
+        states and their probabilities. Only next states with nonzero
+        probabilities will be returned.
+        Orientations map:
+            0: up
+            1: right
+            2: down
+            3: left
         :return: a list of pairs (s', p(s'|s,a)), where s` is tuple (position, orientation)
         '''
-        ### TODO: add agent`s orientation
         r, c = self.agent_pos
+        ori = self.agent_ori
         m = self.get_current_map()
         rows, cols = m.shape
         
-        increments = np.array([[0, -1], [1, 0], [0, 1], [-1, 0]])
-        next_pos = np.clip(
-            self.agent_pos + increments[action],
-            [0, 0],
-            [rows - 1, cols - 1]
-        )
+        if action == 1:  # step forward
+            deltas = np.array([[-1, 0], [0, 1], [1, 0], [0, -1]])
+            step_delta = deltas[ori]
+            next_pos = np.clip(
+                self.agent_pos + step_delta,
+                [0, 0],
+                [rows - 1, cols - 1]
+            )
+            next_ori = ori
+        else:   # turn left/right
+            next_pos = self.agent_pos
+            turn = -1  if action == 0  else 1
+            next_ori = (ori + turn + 4) % 4
         
         state_type = m[r, c]
         next_state_type = m[next_pos[0], next_pos[1]]
         if next_state_type == 'W' or state_type == 'H' or state_type == 'G':
-            return [((self.agent_pos, 0), 1.)]
+            return [((self.agent_pos, next_ori), 1.)]
         else:
-            return [((next_pos, 0), 1.)]
+            return [((next_pos, next_ori), 1.)]
     
     
     def get_observation(self):
-        ### TODO: rotate observation according to agent`s orientation
+        '''
+        Get what agent can see (up to obs_dist distance), rotated according
+        to agent`s orientation.
+        Orientations map:
+            0: up
+            1: right
+            2: down
+            3: left
+        '''
         bm = self.get_current_map(bitmap=True)
         r, c = self.agent_pos
-        obs = np.copy(bm[r : r+self.obs_wide , c : c+self.obs_wide])
+        obs = np.copy(
+                np.rot90(
+                    bm[r : r+self.obs_wide , c : c+self.obs_wide],
+                    self.agent_ori
+                    )
+                )
         return obs
  
     
     def get_pos_as_xy(self, pos=None, rows=None):
+        '''
+        Get agent`s position as [X,Y], instead of [row, column].
+        :param pos: (r,c) position of agent, or None (current position is used)
+        :param rows: number of rows in a map, or None (current map is used)
+        '''
         if pos is None:
             pos = self.agent_pos
         r, c = pos
@@ -187,6 +251,9 @@ class GridMazeEnv(Env, Serializable):
     
     
     def get_current_map(self, bitmap=False):
+        '''
+        Return current map, or bitmap (for observations).
+        '''
         if bitmap:
             return self.bit_maps[self.current_map_idx]
         return self.maps[self.current_map_idx]
@@ -199,18 +266,38 @@ class GridMazeEnv(Env, Serializable):
         '''
         if len(self.plot_opts) == 0:
             return
-        plt.cla()
+        
+        sbp_count = len(self.maps)
+        sbp_nrows = int(np.round(np.sqrt(sbp_count)))
+        sbp_ncols = int((sbp_count-1) // sbp_nrows + 1)
+        plt.figure('Paths')
         plt.clf()
+        fig, ax = plt.subplots(sbp_nrows, sbp_ncols, num='Paths', squeeze=False)
+        ax = ax.flatten()
+        
         # Plot cells grid
-        m = self.get_current_map()
-        rows, cols = m.shape
-        x_grid = np.arange(rows + 1) - 0.5
-        y_grid = np.arange(cols + 1) - 0.5
-        plt.plot(x_grid, np.stack([y_grid] * x_grid.size), ls='-', c='g', lw=1, alpha=0.8)
-        plt.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-', c='g', lw=1, alpha=0.8)
-        plt.xlim(-0.5, cols - 0.5)
-        plt.ylim(-0.5, rows - 0.5)
         plt.tight_layout()
+        for map_idx, map_ax in enumerate(ax):
+            if map_idx >= len(self.maps): map_ax.set_axis_off(); continue
+            m = self.maps[map_idx]
+            rows, cols = m.shape
+            map_ax.set_xlim(-0.5, cols - 0.5)
+            map_ax.set_ylim(-0.5, rows - 0.5)
+            # Grid
+            x_grid = np.arange(rows + 1) - 0.5
+            y_grid = np.arange(cols + 1) - 0.5
+            map_ax.plot(x_grid, np.stack([y_grid] * x_grid.size), ls='-', c='k', lw=1, alpha=0.8)
+            map_ax.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-', c='k', lw=1, alpha=0.8)
+            # Start, goal, walls and holes
+            start = self.get_pos_as_xy(  np.argwhere(m == 'S').T  , rows)
+            goal  = self.get_pos_as_xy(  np.argwhere(m == 'G').T  , rows)
+            walls = self.get_pos_as_xy(  np.argwhere(m == 'W').T  , rows)
+            holes = self.get_pos_as_xy(  np.argwhere(m == 'H').T  , rows)            
+            map_ax.scatter(*start, c='r', marker='o', s=50 )
+            map_ax.scatter(*goal,  c='r', marker='x', s=50 )
+            map_ax.scatter(*walls, c='k', marker='s', s=100)
+            map_ax.scatter(*holes, c='k', marker='v', s=100)
+        
         # Plot paths
         alpha = self.plot_opts.get('alpha', 0.1)
         for path in paths:
@@ -225,7 +312,7 @@ class GridMazeEnv(Env, Serializable):
             pos = np.c_[start_pos_xy, pos]
             pos = pos + np.random.normal(size=pos.shape, scale=0.1)
             c = self.map_colors[map_idx % len(self.map_colors)]
-            plt.plot(pos[0], pos[1], ls='-', c=c, alpha=alpha)
+            ax[map_idx].plot(pos[0], pos[1], ls='-', c=c, alpha=alpha)
         # Save paths figure
         dir = self.plot_opts.get('save', False)
         if dir:
