@@ -114,9 +114,9 @@ class GridMazeEnv(Env, Serializable):
     @property
     def action_space(self):
         '''
-        turn left / step / turn right
+        turn left / step (no turn right)
         '''
-        return Discrete(3)
+        return Discrete(2)
 
     @property
     def observation_space(self):
@@ -264,6 +264,20 @@ class GridMazeEnv(Env, Serializable):
         '''
         Plot all paths in current batch.
         '''
+        ### DEBUG
+        from sandbox.asl.tools.path_trie import PathTrie
+        trie = PathTrie(2)
+        for path in paths:
+            actions = path['actions'].argmax(axis=1).tolist()
+            trie.add_all_subpaths(actions, min_length=3, max_length=10)
+        
+        print('######################################################################')
+        print('Total {} paths'.format(len(paths)))
+        for actions, count in trie.items(action_map={0:'L', 1:'s'}, min_count=len(paths)*2):
+            print(actions, ':', count)
+        print('######################################################################')
+        ### /DEBUG
+        
         if len(self.plot_opts) == 0:
             return
         

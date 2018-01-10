@@ -20,8 +20,8 @@ from rllab.misc.instrument import run_experiment_lite
 
 
 def run_task(*_):
-    env = normalize(GridMazeEnv(plot={'dontsave':'~/rllab/data/local/asl-example/instant-run', 'live':1},
-                                use_maps=[0,1,2]
+    env = normalize(GridMazeEnv(plot={'dontsave':'~/rllab/data/local/asl-example/instant-run', 'live':0},
+                                use_maps=[0,1]
                                 ))
 
     policy = CategoricalMLPPolicy(
