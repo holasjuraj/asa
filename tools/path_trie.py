@@ -9,7 +9,7 @@ class Node:
     def has_children(self):
         return self.children is not None
     
-    def get_count(self):
+    def get_count(self, ):
         return self.counter
     
     def increase(self, n=1):
@@ -62,12 +62,13 @@ class PathTrie:
             node = node[a]
         return node.get_count()
     
-    def items(self, action_map=None, min_count=1, sort=True):
+    def items(self, action_map=None, min_count=1, sort=True, null_hyp={}):
         '''
         Get all paths and counts.
         :param action_map: dictionary from action numbers into chars (for better readability)
         :param min_count: return only paths with count min_count or more
         :param sort: sort result (path-count DESC, path-length DESC, path ASC)
+        :param null_hyp: use normalization by null hypothesis, {'num_paths':int, 'num_steps':int}
         :return: [(path1, count1), ...]
         '''
         paths = []
@@ -78,9 +79,19 @@ class PathTrie:
             else:
                 return ''.join( map(lambda a: action_map[a], reversed(top)) )
         
+        def use_null_hyp(top, cnt):
+            if not null_hyp:
+                return cnt
+            sq_len = len(top)
+            steps = null_hyp['num_steps']
+            paths = null_hyp['num_paths']
+            null_cnt = (steps + paths * (-sq_len+1))  /  (self.num_actions**sq_len)
+            return cnt / null_cnt
+        
         def collect_subtree_items(node, top):
             if len(top) >= 0 and node.get_count() >= min_count:
-                paths.append( (top2path(top), node.get_count()) )
+                f = use_null_hyp(top, node.get_count())
+                paths.append( (top2path(top), f) )
             if node.has_children():
                 for a in range(self.num_actions):
                     new_top = top + [a]

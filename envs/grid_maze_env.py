@@ -271,11 +271,13 @@ class GridMazeEnv(Env, Serializable):
             actions = path['actions'].argmax(axis=1).tolist()
             trie.add_all_subpaths(actions, min_length=3, max_length=10)
         
-        print('######################################################################')
-        print('Total {} paths'.format(len(paths)))
-        for actions, count in trie.items(action_map={0:'L', 1:'s'}, min_count=len(paths)*2):
-            print(actions, ':', count)
-        print('######################################################################')
+        logger.log('COUNTS: Total {} paths'.format(len(paths)))
+        for actions, count in trie.items(
+                action_map={0:'L', 1:'s'},
+                min_count=len(paths)*2,
+                null_hyp={'num_paths':len(paths), 'num_steps':5000} ### TODO: VERY DIRTY HACK! Hard-coded num_stes = batch_size
+                ):
+            logger.log('COUNTS: {}:{}'.format(actions, count))
         ### /DEBUG
         
         if len(self.plot_opts) == 0:

@@ -20,8 +20,8 @@ from rllab.misc.instrument import run_experiment_lite
 
 
 def run_task(*_):
-    env = normalize(GridMazeEnv(plot={'dontsave':'~/rllab/data/local/asl-example/instant-run', 'live':0},
-                                use_maps=[0,1]
+    env = normalize(GridMazeEnv(plot={}, #{'dontsave':'~/rllab/data/local/asl-example/instant-run', 'live':0},
+                                use_maps='all', #[0,1]
                                 ))
 
     policy = CategoricalMLPPolicy(
@@ -36,9 +36,9 @@ def run_task(*_):
         env=env,
         policy=policy,
         baseline=baseline,
-        batch_size=3333,
+        batch_size=5000,
         max_path_length=100,
-        n_itr=30,
+        n_itr=50,
         discount=0.99,
         step_size=0.01,
         # Uncomment both lines (this and the plot parameter below) to enable plotting
@@ -46,19 +46,21 @@ def run_task(*_):
     )
     algo.train()
 
-# Run directly
-run_task()
-input('< Press Enter to quit >')
+# # Run directly
+# run_task()
+# input('< Press Enter to quit >')
 
-# # Run pickled
-# run_experiment_lite(
-#     run_task,
-#     exp_prefix='asl-example',
-#     # Number of parallel workers for sampling
-#     n_parallel=2,
-#     # Only keep the snapshot parameters for the last iteration
-#     snapshot_mode="last",
-#     # Specifies the seed for the experiment. If this is not provided, a random seed will be used
-#     seed=1,
-# #     plot=True
-# )
+# Run pickled
+for seed in range(1, 6):
+    run_experiment_lite(
+        run_task,
+        exp_prefix='asl-path-trie-count',
+        exp_name='all-5000-50-null-{}'.format(seed),
+        # Number of parallel workers for sampling
+        n_parallel=2,
+        # Only keep the snapshot parameters for the last iteration
+        snapshot_mode="last",
+        # Specifies the seed for the experiment. If this is not provided, a random seed will be used
+        seed=seed,
+    #     plot=True
+    )
