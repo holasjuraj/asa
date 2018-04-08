@@ -264,14 +264,16 @@ class GridMazeEnv(Env, Serializable):
         '''
         Log counts of frequent sequences. Plot all paths in current batch.
         '''
-        ### COUNTS
+        ## COUNTS
         min_length = 3
         max_length = 10
         from sandbox.asl.tools.path_trie import PathTrie
         trie = PathTrie(num_actions=2)
         for path in paths:
             actions = path['actions'].argmax(axis=1).tolist()
-            trie.add_all_subpaths(actions, min_length=min_length, max_length=max_length)
+            observations = path['observations']
+            trie.add_all_subpaths(actions, observations,
+                                  min_length=min_length, max_length=max_length)
         
         logger.log('COUNTS: Total {} paths'.format(len(paths)))
         for actions, count, f_score in trie.items(
@@ -281,8 +283,9 @@ class GridMazeEnv(Env, Serializable):
                 ):
             logger.log('COUNTS: {:{pad}}\t{}\t{:.3f}'.format(actions, count, f_score, pad=max_length))
         
+#         quit()
         
-        ### PLOTS
+        ## PLOTS
         if len(self.plot_opts) == 0:
             return
         
