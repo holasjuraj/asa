@@ -276,14 +276,13 @@ class GridMazeEnv(Env, Serializable):
                                   min_length=min_length, max_length=max_length)
         
         logger.log('COUNTS: Total {} paths'.format(len(paths)))
-        for actions, count, f_score in trie.items(
+        for item in trie.items(
                 action_map={0:'L', 1:'s'},
                 min_count=len(paths)*2,
                 min_f_score=1,
                 ):
-            logger.log('COUNTS: {:{pad}}\t{}\t{:.3f}'.format(actions, count, f_score, pad=max_length))
-        
-#         quit()
+            logger.log('COUNTS: {:{pad}}\t{}\t{:.3f}'.format(*item[:3], pad=max_length))
+            # TODO show starts and ends too
         
         ## PLOTS
         if len(self.plot_opts) == 0:

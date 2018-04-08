@@ -53,7 +53,7 @@ class PathTrie:
     
     def add(self, path, observations, add_subpaths=True, min_length=1):
         '''
-        Add path to trie (increase its count). Path is stored reversed!
+        Add path to trie (increase its count). Path is stored reversed (last action is under the trie's root)!
         :param path: sequence of actions (must be integers!)
         :param observations: sequence of observations, long len(path)+1 (incl. obs. after last action)
         :param add_subpaths: if True, suffixes of path are added too
@@ -67,8 +67,7 @@ class PathTrie:
         for i, a in enumerate(path):
             node = node[a]
             if (i == length-1) or (add_subpaths and i+1 >= min_length):
-                # obs[length - i - 2] - "2" because 1) -1 for going backwards, 2) -1 for the very last end_obs
-                node.add_count(start_obs=observations[length - i - 2], end_obs=end_obs)
+                node.add_count(start_obs=observations[length - i - 1], end_obs=end_obs)
         return node.get_count()
     
     
@@ -92,16 +91,37 @@ class PathTrie:
             self.add(path[start:end], observations[start:end+1],
                      add_subpaths=True, min_length=min_length)
     
+        
+    def apply_null_hyp(self, top, cnt, null_hyp_opts={}):
+        '''
+        Normalize count with null hypothesis count.
+        :param top: top of the trie - path (sequence of actions) in reverse order
+        :param cnt: count (# of occurences) of this path
+        :param null_hyp_opts: override trie's counts of:
+                              {'num_paths' : number of paths/roll-outs/episodes collected within the batch (int),
+                               'num_steps' : total number of steps taken in batch (int)}
+        '''
+        sq_len = len(top)
+        num_steps = null_hyp_opts.get('num_steps', self.num_steps)
+        num_eps   = null_hyp_opts.get('num_paths', self.num_eps)
+        '''
+        Following formula is a variation of: https://math.stackexchange.com/a/220549
+        n: length of total string = num_steps
+        m: length of searched substring = sq_len
+        p_i: probability of letter/action = (1 / self.num_actions) for all i
+        Formula = (n + num_eps*m - num_eps*1) * (1 / self.num_actions)^m
+        '''
+        null_cnt = (num_steps + num_eps * (-sq_len+1))  /  (self.num_actions**sq_len)
+        return cnt / null_cnt
     
-    def __getitem__(self, path):
+    
+    def aggregate_observations(self, observations):
         '''
-        Get count of specified path.
+        Aggregate path-start/path-end observations.
+        :param observations: numpy array of observations
+        :todo: some more meaningful aggregation strategy?
         '''
-        path = reversed(path)
-        node = self.root
-        for a in path:
-            node = node[a]
-        return node.get_count()
+        return observations.mean(axis=0)
     
     
     def items(self, action_map=None, min_count=1, min_f_score=0, sort=True, null_hyp_opts={}):
@@ -112,43 +132,22 @@ class PathTrie:
         :param min_f_score: return only paths with f-score min_f_score or more
         :param sort: sort result. Boolean, or list of field indexes to sort along, e.g.[2, 1] : count=1, f-score=2.
                      Default sorting: (f-score DESC, count DESC, path-length DESC, path ASC)
-        :param null_hyp_opts: use normalization by null hypothesis. Boolean, or dictionary to override trie's counts of:
+        :param null_hyp_opts: override trie's counts of:
                               {'num_paths' : number of paths/roll-outs/episodes collected within the batch (int),
                                'num_steps' : total number of steps taken in batch (int)}
-        :return: [(path1, count1, f_score1), ...]
+        :return: [(path, count, f_score, aggregated_start_observation, agg_end_obs), ...]
         '''
         paths = []
         
-        def top2path(top):
+        def top_to_path(top):
             '''
-            Convert "top of trie" to text representation of path
+            Convert "top of trie" to list/text representation of path
             :param top: top of the trie - path (sequence of actions) in reverse order
             '''
             if action_map is None:
                 return list(reversed(top))
             else:
                 return ''.join( map(lambda a: action_map[a], reversed(top)) )
-        
-        def apply_null_hyp(top, cnt):
-            '''
-            Normalize count with null hypothesis count.
-            :param top: top of the trie - path (sequence of actions) in reverse order
-            :param cnt: count (# of occurences) of this path
-            :note: optionally null_hyp_opts['num_steps'] = total number of steps taken in batch
-            :note: optionally null_hyp_opts['num_paths'] = number of paths/roll-outs/episodes collected within the batch
-            '''
-            sq_len = len(top)
-            num_steps = null_hyp_opts.get('num_steps', self.num_steps)
-            num_eps   = null_hyp_opts.get('num_paths', self.num_eps)
-            '''
-            Following formula is a variation of: https://math.stackexchange.com/a/220549
-            n: length of total string = num_steps
-            m: length of searched substring = sq_len
-            p_i: probability of letter/action = (1 / self.num_actions) for all i
-            Formula = (n + num_eps*m - num_eps*1) * (1 / self.num_actions)^m
-            '''
-            null_cnt = (num_steps + num_eps * (-sq_len+1))  /  (self.num_actions**sq_len)
-            return cnt / null_cnt
         
         def collect_subtree_items(node, top):
             '''
@@ -158,9 +157,12 @@ class PathTrie:
             '''
             if len(top) >= 0:
                 c = node.get_count()
-                f = apply_null_hyp(top, c)
+                f = self.apply_null_hyp(top, c, null_hyp_opts)
                 if c >= min_count and f >= min_f_score:
-                    paths.append( (top2path(top), c, f) )
+                    paths.append( (top_to_path(top), c, f,
+                                   self.aggregate_observations(node.get_starts()),
+                                   self.aggregate_observations(node.get_ends())
+                                   ) )
             if node.has_children():
                 for a in range(self.num_actions):
                     new_top = top + [a]
@@ -187,15 +189,18 @@ class PathTrie:
 
 if __name__ == '__main__':
     '''
-    Example usage
+    Example usage.
+    Good with: def aggregate_observations(self, observations): observations.tolist()
     '''
     trie = PathTrie(2)
-    path = [1,1,0,0,0,1,1,1,0,0,0,1,1]
-    observations = np.array([[1],[1],[0],[0],[0],[1],[1],[1],[0],[0],[0],[1],[1]])
-    trie.add_all_subpaths(path, observations, min_length=3, max_length=100)
+    # obs: 1 2 3 4 5 6 7 8 9 0 1 2 3 .
+    # acts: s s L L L s s s L L L s L
+    path = [1,1,0,0,0,1,1,1,0,0,0,1,0]
+    observations = np.atleast_2d(np.arange(1, 14)).T
+    trie.add_all_subpaths(path, observations, min_length=3)
     
-    for path, count in trie.items(action_map={0:'L', 1:'s'}, min_count=2):
-        print(path, ':', count)
+    for path in trie.items(action_map={0:'L', 1:'s'}, min_count=2):
+        print('{:12} {:3} {:5.2f} {}\t{}'.format(*path))
 
 
 
