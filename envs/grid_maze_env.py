@@ -103,7 +103,7 @@ class GridMazeEnv(Env, Serializable):
             
         # Plotting
         self.paths_plot_num = 0
-        if plot is None:
+        if (plot is None) or (plot == False):
             self.plot_opts = {}
         else:
             self.plot_opts = plot
@@ -262,24 +262,27 @@ class GridMazeEnv(Env, Serializable):
     @overrides
     def log_diagnostics(self, paths):
         '''
-        Plot all paths in current batch.
+        Log counts of frequent sequences. Plot all paths in current batch.
         '''
-        ### DEBUG
+        ### COUNTS
+        min_length = 3
+        max_length = 10
         from sandbox.asl.tools.path_trie import PathTrie
-        trie = PathTrie(2)
+        trie = PathTrie(num_actions=2)
         for path in paths:
             actions = path['actions'].argmax(axis=1).tolist()
-            trie.add_all_subpaths(actions, min_length=3, max_length=10)
+            trie.add_all_subpaths(actions, min_length=min_length, max_length=max_length)
         
         logger.log('COUNTS: Total {} paths'.format(len(paths)))
-        for actions, count in trie.items(
+        for actions, count, f_score in trie.items(
                 action_map={0:'L', 1:'s'},
                 min_count=len(paths)*2,
-                null_hyp={'num_paths':len(paths), 'num_steps':5000} ### TODO: VERY DIRTY HACK! Hard-coded num_stes = batch_size
+                min_f_score=1,
                 ):
-            logger.log('COUNTS: {}:{}'.format(actions, count))
-        ### /DEBUG
+            logger.log('COUNTS: {:{pad}}\t{}\t{:.3f}'.format(actions, count, f_score, pad=max_length))
         
+        
+        ### PLOTS
         if len(self.plot_opts) == 0:
             return
         
