@@ -6,6 +6,7 @@ from rllab.core.serializable import Serializable
 from rllab.misc.overrides import overrides
 from rllab.misc import logger
 import os
+from sandbox.asl.tools.path_trie import PathTrie
 
 import numpy as np
 import matplotlib
@@ -267,8 +268,7 @@ class GridMazeEnv(Env, Serializable):
         ## COUNTS
         min_length = 3
         max_length = 10
-        from sandbox.asl.tools.path_trie import PathTrie
-        trie = PathTrie(num_actions=2)
+        trie = PathTrie(num_actions=self.action_space.n)
         for path in paths:
             actions = path['actions'].argmax(axis=1).tolist()
             observations = path['observations']
@@ -280,6 +280,7 @@ class GridMazeEnv(Env, Serializable):
                 action_map={0:'L', 1:'s'},
                 min_count=len(paths)*2,
                 min_f_score=1,
+                max_results=10
                 ):
             logger.log('COUNTS: {:{pad}}\t{}\t{:.3f}'.format(*item[:3], pad=max_length))
             # TODO show starts and ends too

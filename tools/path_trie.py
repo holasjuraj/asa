@@ -24,14 +24,14 @@ class Node:
     def add_count(self, n=1, start_obs=None, end_obs=None):
         '''
         Add to the counter of this path, store observations.
+        Observations are stored only if both start and end obs. is provided.
         :param n: amount to increase the counter
         :param start_obs: observation before this path
         :param end_obs: observation after last action of this path
         '''
         self.counter += n
-        if start_obs is not None:
+        if start_obs is not None  and  end_obs is not None:
             self.start_observations.append(start_obs)
-        if end_obs is not None:
             self.end_observations.append(end_obs)
     
     def __getitem__(self, action):
@@ -115,16 +115,38 @@ class PathTrie:
         return cnt / null_cnt
     
     
-    def aggregate_observations(self, observations):
+    def aggregate_observations(self, observations, aggregations='all'):
         '''
         Aggregate path-start/path-end observations.
         :param observations: numpy array of observations
-        :todo: some more meaningful aggregation strategy?
+        :param aggregations: 'all' or list of aggregations to compute
+        :return: {'mean': <mean of observations>,
+                  'most_freq': <most frequent element>
+                  'nearest_mean': <element that is nearest to the mean>
+                  'medoid': <element with shortest distance to all others>}
         '''
-        return observations.mean(axis=0)
+        if aggregations == 'all':
+            aggregations = ['mean', 'most_freq', 'nearest_mean', 'medoid']
+        if not isinstance(aggregations, list):
+            aggregations = [aggregations]
+        result = {}
+        if 'mean' in aggregations:
+            result['mean'] = observations.mean(axis=0)
+        if 'most_freq' in aggregations:
+            (values, counts) = np.unique(observations, axis=0, return_counts=True)
+            result['most_freq'] = values[np.argmax(counts)]
+        if 'nearest_mean' in aggregations:
+            result['nearest_mean'] = observations[ np.linalg.norm(observations - mean, axis=1).argmin() ]
+        if 'medoid' in aggregations:
+            count = observations.shape[0]
+            dist = np.array([[np.linalg.norm(observations[i] - observations[j]) if j < i else 0
+                              for j in range(count)] for i in range(count)]) # lower triangle
+            dist = dist + dist.T # full distance matrix
+            result['medoid'] = observations[ dist.sum(axis=0).argmin() ]
+        return result
     
     
-    def items(self, action_map=None, min_count=1, min_f_score=0, sort=True, null_hyp_opts={}):
+    def items(self, action_map=None, min_count=1, min_f_score=0, sort=True, max_results=np.inf, null_hyp_opts={}, aggregations='all'):
         '''
         Get all paths, their counts and f-scores.
         :param action_map: dictionary from action numbers into chars (for better readability)
@@ -132,10 +154,12 @@ class PathTrie:
         :param min_f_score: return only paths with f-score min_f_score or more
         :param sort: sort result. Boolean, or list of field indexes to sort along, e.g.[2, 1] : count=1, f-score=2.
                      Default sorting: (f-score DESC, count DESC, path-length DESC, path ASC)
+        :param max_results: number of results to return, only applied if sort is used
         :param null_hyp_opts: override trie's counts of:
                               {'num_paths' : number of paths/roll-outs/episodes collected within the batch (int),
                                'num_steps' : total number of steps taken in batch (int)}
-        :return: [(path, count, f_score, aggregated_start_observation, agg_end_obs), ...]
+        :param aggregations: list of aggregations to compute on start/end observations, or 'all'
+        :return: [(path, count, f_score, aggregated_observations_dict), ...]
         '''
         paths = []
         
@@ -159,9 +183,10 @@ class PathTrie:
                 c = node.get_count()
                 f = self.apply_null_hyp(top, c, null_hyp_opts)
                 if c >= min_count and f >= min_f_score:
+                    # start and end observations are expected to be flattened vectors (no scalars or matrices)
+                    startsEnds = np.concatenate([node.get_starts(), node.get_ends()], axis=1)
                     paths.append( (top_to_path(top), c, f,
-                                   self.aggregate_observations(node.get_starts()),
-                                   self.aggregate_observations(node.get_ends())
+                                   self.aggregate_observations(startsEnds, aggregations)
                                    ) )
             if node.has_children():
                 for a in range(self.num_actions):
@@ -182,6 +207,7 @@ class PathTrie:
                     res = res or -cmp(a[i], b[i])
                 return res or  -cmp(len(a[0]), len(b[0]))  or  cmp(a[0], b[0])
             paths.sort(key=cmp_to_key(comparator))
+            paths = paths[:min(len(paths), max_results)]
         
         return paths
 
