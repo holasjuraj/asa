@@ -70,7 +70,9 @@ class GridMazeEnv(Env, Serializable):
     def __init__(self, obs_dist=2, plot=None, use_maps='all'):
         '''
         :param obs_dist: how far agent sees, Manhattan distance from agent, default=2
-        :param plot: {'save':<path>, 'live':<bool>, 'alpha':<0..1>}
+        :param plot: which plots to generate:
+                {'visitation': <opts>, 'aggregation': <opts>}
+                where opts = {'save': <directory or False>, 'live': <boolean> [, 'alpha': <0..1>]}
         :param use_maps: which maps to use, list of indexes or 'all'
         '''
         Serializable.quick_init(self, locals())
@@ -108,7 +110,10 @@ class GridMazeEnv(Env, Serializable):
             self.plot_opts = {}
         else:
             self.plot_opts = plot
-        if self.plot_opts.get('live', False):
+        for plot_type in ['visitation', 'aggregation']:
+            if not plot_type in self.plot_opts  or  not isinstance(self.plot_opts[plot_type], dict):
+                self.plot_opts[plot_type] = {}
+        if any([plot_type_opts.get('live', False) for plot_type_opts in self.plot_opts.values()]):
             plt.ion()
 
 
@@ -283,12 +288,20 @@ class GridMazeEnv(Env, Serializable):
                 max_results=10
                 ):
             logger.log('COUNTS: {:{pad}}\t{}\t{:.3f}'.format(*item[:3], pad=max_length))
-            # TODO show starts and ends too
         
         ## PLOTS
-        if len(self.plot_opts) == 0:
-            return
+        if self.plot_opts['visitation']:
+            self.plot_visitations(paths, self.plot_opts['visitation'])
+        if self.plot_opts['aggregation']:
+            self.plot_aggregations(trie, self.plot_opts['aggregation'])
         
+    
+    def plot_visitations(self, paths, opts={}):
+        '''
+        Plot visitation graphs, i.e. stacked paths for each map.
+        :param paths: paths statistics (dict)
+        :param opts: plotting options: {'save': <directory or False>, 'live': <boolean>, 'alpha': <0..1 opacity of each plotted path>}  
+        '''        
         sbp_count = len(self.maps)
         sbp_nrows = int(np.round(np.sqrt(sbp_count)))
         sbp_ncols = int((sbp_count-1) // sbp_nrows + 1)
@@ -321,7 +334,7 @@ class GridMazeEnv(Env, Serializable):
             map_ax.scatter(*holes, c='k', marker='v', s=100)
         
         # Plot paths
-        alpha = self.plot_opts.get('alpha', 0.1)
+        alpha = opts.get('alpha', 0.1)
         for path in paths:
             # Starting position
             map_idx = path['env_infos']['map'][0]
@@ -336,7 +349,7 @@ class GridMazeEnv(Env, Serializable):
             c = self.map_colors[map_idx % len(self.map_colors)]
             ax[map_idx].plot(pos[0], pos[1], ls='-', c=c, alpha=alpha)
         # Save paths figure
-        dir = self.plot_opts.get('save', False)
+        dir = opts.get('save', False)
         if dir:
             if isinstance(dir, str):
                 dir = os.path.expanduser(dir)
@@ -347,7 +360,17 @@ class GridMazeEnv(Env, Serializable):
             plt.savefig(os.path.join(dir, 'visitation{:0>3d}.png'.format(self.paths_plot_num)))
             self.paths_plot_num += 1
         # Live plotting
-        if self.plot_opts.get('live', False):
+        if opts.get('live', False):
             plt.gcf().canvas.draw()
             plt.waitforbuttonpress(timeout=0.001)
+        
+    
+    def plot_aggregations(self, trie, opts={}):
+        '''
+        Plot aggregation graphs, i.e. aggregated start and end for each frequent subpath from trie.
+        :param trie: subpaths statistics (PathTrie)
+        :param opts: plotting options: {'save': <directory or False>, 'live': <boolean>}  
+        '''
+        # TODO
+        pass
 
