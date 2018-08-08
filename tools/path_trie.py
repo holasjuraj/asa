@@ -136,7 +136,8 @@ class PathTrie:
             (values, counts) = np.unique(observations, axis=0, return_counts=True)
             result['most_freq'] = values[np.argmax(counts)]
         if 'nearest_mean' in aggregations:
-            result['nearest_mean'] = observations[ np.linalg.norm(observations - mean, axis=1).argmin() ]
+            obs_mean = observations.mean(axis=0)
+            result['nearest_mean'] = observations[ np.linalg.norm(observations - obs_mean, axis=1).argmin() ]
         if 'medoid' in aggregations:
             count = observations.shape[0]
             dist = np.array([[np.linalg.norm(observations[i] - observations[j]) if j < i else 0
@@ -179,6 +180,7 @@ class PathTrie:
             :param node: trie node to start in
             :param top: top of the trie - path up to this node (sequence of actions) in reverse order
             '''
+            # TODO compute aggregations only for returned paths, not for all
             if len(top) >= 0:
                 c = node.get_count()
                 f = self.apply_null_hyp(top, c, null_hyp_opts)

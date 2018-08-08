@@ -20,7 +20,12 @@ from rllab.misc.instrument import run_experiment_lite
 
 
 def run_task(*_):
-    env = normalize(GridMazeEnv(plot={}, #{'save':'~/rllab/data/local/asl-example/instant-run', 'live':0},
+    env = normalize(GridMazeEnv(plot={
+                                    'visitation': {'save':'~/rllab/data/local/asl-example/instant-run',
+                                                   'live': True
+                                                   },
+                                    #'aggregation': {}
+                                },
                                 use_maps='all', #[0,1]
                                 ))
 
@@ -38,7 +43,7 @@ def run_task(*_):
         baseline=baseline,
         batch_size=5000,
         max_path_length=100,
-        n_itr=25,
+        n_itr=1,#25,
         discount=0.99,
         step_size=0.01,
         # Uncomment both lines (this and the plot parameter below) to enable plotting
@@ -48,7 +53,7 @@ def run_task(*_):
 
 # Run directly
 run_task()
-# input('< Press Enter to quit >') # prevent plots from closing
+input('< Press Enter to quit >') # prevent plots from closing
 
 # # Run pickled
 # for seed in range(1, 6):

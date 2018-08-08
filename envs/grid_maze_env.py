@@ -72,7 +72,7 @@ class GridMazeEnv(Env, Serializable):
         :param obs_dist: how far agent sees, Manhattan distance from agent, default=2
         :param plot: which plots to generate:
                 {'visitation': <opts>, 'aggregation': <opts>}
-                where opts = {'save': <directory or False>, 'live': <boolean> [, 'alpha': <0..1>]}
+                where opts = {'save': <directory or False>, 'live': <boolean> [, 'alpha': <0..1>][, 'noise': <0..1>]}
         :param use_maps: which maps to use, list of indexes or 'all'
         '''
         Serializable.quick_init(self, locals())
@@ -105,7 +105,7 @@ class GridMazeEnv(Env, Serializable):
             self.bit_maps.append(bm_padded)
             
         # Plotting
-        self.paths_plot_num = 0
+        self.visitation_plot_num = 0
         if (plot is None) or (plot == False):
             self.plot_opts = {}
         else:
@@ -253,7 +253,7 @@ class GridMazeEnv(Env, Serializable):
         r, c = pos
         if rows is None:
             rows, _ = self.get_current_map().shape
-        return (c, rows - r - 1)
+        return np.array([c, rows - r - 1])
     
     
     def get_current_map(self, bitmap=False):
@@ -270,7 +270,7 @@ class GridMazeEnv(Env, Serializable):
         '''
         Log counts of frequent sequences. Plot all paths in current batch.
         '''
-        ## COUNTS
+        # Count paths
         min_length = 3
         max_length = 10
         trie = PathTrie(num_actions=self.action_space.n)
@@ -280,16 +280,17 @@ class GridMazeEnv(Env, Serializable):
             trie.add_all_subpaths(actions, observations,
                                   min_length=min_length, max_length=max_length)
         
-        logger.log('COUNTS: Total {} paths'.format(len(paths)))
+        logger.log('ASA: Total {} paths:'.format(len(paths)))
         for item in trie.items(
                 action_map={0:'L', 1:'s'},
                 min_count=len(paths)*2,
                 min_f_score=1,
-                max_results=10
+                max_results=10,
+                aggregations=['mean', 'nearest_mean']
                 ):
-            logger.log('COUNTS: {:{pad}}\t{}\t{:.3f}'.format(*item[:3], pad=max_length))
+            logger.log('ASA: {:{pad}}\t{}\t{:.3f}'.format(*item[:3], pad=max_length))
         
-        ## PLOTS
+        # Plots
         if self.plot_opts['visitation']:
             self.plot_visitations(paths, self.plot_opts['visitation'])
         if self.plot_opts['aggregation']:
@@ -300,7 +301,11 @@ class GridMazeEnv(Env, Serializable):
         '''
         Plot visitation graphs, i.e. stacked paths for each map.
         :param paths: paths statistics (dict)
-        :param opts: plotting options: {'save': <directory or False>, 'live': <boolean>, 'alpha': <0..1 opacity of each plotted path>}  
+        :param opts: plotting options:
+                {'save': <directory or False>,
+                 'live': <boolean>,
+                 'alpha': <0..1, opacity of each plotted path>,
+                 'noise': <0..1, amount of noise added to distinguish individual paths>}  
         '''        
         sbp_count = len(self.maps)
         sbp_nrows = int(np.round(np.sqrt(sbp_count)))
@@ -311,6 +316,8 @@ class GridMazeEnv(Env, Serializable):
         ax = ax.flatten()
         
         # Plot cells grid
+        from matplotlib.collections import PatchCollection
+        from matplotlib.patches import Rectangle
         plt.tight_layout()
         for map_idx, map_ax in enumerate(ax):
             if map_idx >= len(self.maps): map_ax.set_axis_off(); continue
@@ -326,15 +333,16 @@ class GridMazeEnv(Env, Serializable):
             # Start, goal, walls and holes
             start = self.get_pos_as_xy(  np.argwhere(m == 'S').T  , rows)
             goal  = self.get_pos_as_xy(  np.argwhere(m == 'G').T  , rows)
-            walls = self.get_pos_as_xy(  np.argwhere(m == 'W').T  , rows)
-            holes = self.get_pos_as_xy(  np.argwhere(m == 'H').T  , rows)            
+            holes = self.get_pos_as_xy(  np.argwhere(m == 'H').T  , rows)
+            walls = self.get_pos_as_xy(  np.argwhere(m == 'W').T  , rows)            
             map_ax.scatter(*start, c='r', marker='o', s=50 )
             map_ax.scatter(*goal,  c='r', marker='x', s=50 )
-            map_ax.scatter(*walls, c='k', marker='s', s=100)
             map_ax.scatter(*holes, c='k', marker='v', s=100)
+            map_ax.add_collection(PatchCollection([Rectangle(xy-0.5, 1, 1, fc='k') for xy in walls.T]))
         
         # Plot paths
         alpha = opts.get('alpha', 0.1)
+        noise = opts.get('noise', 0.1)
         for path in paths:
             # Starting position
             map_idx = path['env_infos']['map'][0]
@@ -345,7 +353,7 @@ class GridMazeEnv(Env, Serializable):
             # All others
             pos = path['env_infos']['pos_xy'].T
             pos = np.c_[start_pos_xy, pos]
-            pos = pos + np.random.normal(size=pos.shape, scale=0.1)
+            pos = pos + np.random.normal(size=pos.shape, scale=noise)
             c = self.map_colors[map_idx % len(self.map_colors)]
             ax[map_idx].plot(pos[0], pos[1], ls='-', c=c, alpha=alpha)
         # Save paths figure
@@ -357,8 +365,8 @@ class GridMazeEnv(Env, Serializable):
                     os.makedirs(dir)
             else:
                 dir = logger.get_snapshot_dir()
-            plt.savefig(os.path.join(dir, 'visitation{:0>3d}.png'.format(self.paths_plot_num)))
-            self.paths_plot_num += 1
+            plt.savefig(os.path.join(dir, 'visitation{:0>3d}.png'.format(self.visitation_plot_num)))
+            self.visitation_plot_num += 1
         # Live plotting
         if opts.get('live', False):
             plt.gcf().canvas.draw()
@@ -373,4 +381,3 @@ class GridMazeEnv(Env, Serializable):
         '''
         # TODO
         pass
-
