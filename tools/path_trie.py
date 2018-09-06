@@ -166,6 +166,7 @@ class PathTrie:
         '''
         paths = []
         # TODO change: return list of dicts, not list of tuples
+        # TODO add: some counting of std of paths within a node?
         
         def top_to_path(top):
             '''
@@ -183,7 +184,6 @@ class PathTrie:
             :param node: trie node to start in
             :param top: top of the trie - path up to this node (sequence of actions) in reverse order
             '''
-            # TODO compute aggregations only for returned paths, not for all
             if len(top) >= 0:
                 c = node.get_count()
                 f = self.apply_null_hyp(top, c, null_hyp_opts)
