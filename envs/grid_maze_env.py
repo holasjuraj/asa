@@ -286,7 +286,7 @@ class GridMazeEnv(Env, Serializable):
                 min_count=len(paths)*2,
                 min_f_score=1,
                 max_results=10,
-                aggregations=['mean', 'nearest_mean']
+                aggregations='all' #['mean', 'nearest_mean']
                 ):
             logger.log('ASA: {:{pad}}\t{}\t{:.3f}'.format(*item[:3], pad=max_length))
         

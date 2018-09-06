@@ -160,7 +160,7 @@ class PathTrie:
                               {'num_paths' : number of paths/roll-outs/episodes collected within the batch (int),
                                'num_steps' : total number of steps taken in batch (int)}
         :param aggregations: list of aggregations to compute on start/end observations, or 'all'
-        :return: [(path, count, f_score, aggregated_observations_dict), ...]
+        :return: [(path, count, f_score, aggregated_observations_dict, trie_node), ...]
         '''
         paths = []
         
@@ -185,11 +185,12 @@ class PathTrie:
                 c = node.get_count()
                 f = self.apply_null_hyp(top, c, null_hyp_opts)
                 if c >= min_count and f >= min_f_score:
-                    # start and end observations are expected to be flattened vectors (no scalars or matrices)
-                    startsEnds = np.concatenate([node.get_starts(), node.get_ends()], axis=1)
-                    paths.append( (top_to_path(top), c, f,
-                                   self.aggregate_observations(startsEnds, aggregations)
-                                   ) )
+                    paths.append([
+                        top_to_path(top),
+                        c,
+                        f,
+                        None, # aggregations will be computed later
+                        node] )
             if node.has_children():
                 for a in range(self.num_actions):
                     new_top = top + [a]
@@ -210,6 +211,13 @@ class PathTrie:
                 return res or  -cmp(len(a[0]), len(b[0]))  or  cmp(a[0], b[0])
             paths.sort(key=cmp_to_key(comparator))
             paths = paths[:min(len(paths), max_results)]
+        
+        # Compute aggregations for returning paths
+        for path in paths:
+            node = path[4]
+            # start and end observations are expected to be flattened vectors (no scalars or matrices)
+            startsEnds = np.concatenate([node.get_starts(), node.get_ends()], axis=1)
+            path[3] = self.aggregate_observations(startsEnds, aggregations)
         
         return paths
 
