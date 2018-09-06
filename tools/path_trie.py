@@ -44,6 +44,8 @@ class Node:
 
 
 class PathTrie:
+    all_aggregations = ['mean', 'most_freq', 'nearest_mean', 'medoid']
+    
     def __init__(self, num_actions):
         self.root = Node(num_actions)
         self.num_actions = num_actions
@@ -126,7 +128,7 @@ class PathTrie:
                   'medoid': <element with shortest distance to all others>}
         '''
         if aggregations == 'all':
-            aggregations = ['mean', 'most_freq', 'nearest_mean', 'medoid']
+            aggregations = PathTrie.all_aggregations
         if not isinstance(aggregations, list):
             aggregations = [aggregations]
         result = {}
@@ -163,6 +165,7 @@ class PathTrie:
         :return: [(path, count, f_score, aggregated_observations_dict, trie_node), ...]
         '''
         paths = []
+        # TODO change: return list of dicts, not list of tuples
         
         def top_to_path(top):
             '''

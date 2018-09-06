@@ -106,6 +106,7 @@ class GridMazeEnv(Env, Serializable):
             
         # Plotting
         self.visitation_plot_num = 0
+        self.aggregation_plot_num = 0
         if (plot is None) or (plot == False):
             self.plot_opts = {}
         else:
@@ -273,6 +274,7 @@ class GridMazeEnv(Env, Serializable):
         # Count paths
         min_length = 3
         max_length = 10
+        aggregations = 'all' #['mean', 'nearest_mean']
         trie = PathTrie(num_actions=self.action_space.n)
         for path in paths:
             actions = path['actions'].argmax(axis=1).tolist()
@@ -281,20 +283,23 @@ class GridMazeEnv(Env, Serializable):
                                   min_length=min_length, max_length=max_length)
         
         logger.log('ASA: Total {} paths:'.format(len(paths)))
-        for item in trie.items(
+        frequent_paths = trie.items(
                 action_map={0:'L', 1:'s'},
                 min_count=len(paths)*2,
                 min_f_score=1,
                 max_results=10,
-                aggregations='all' #['mean', 'nearest_mean']
-                ):
-            logger.log('ASA: {:{pad}}\t{}\t{:.3f}'.format(*item[:3], pad=max_length))
+                aggregations=aggregations
+                )
+        logger.log('ASA: Found {} frequent paths: [path, count f-score]'.format(len(frequent_paths)))
+        for f_path in frequent_paths:
+            logger.log('ASA: {:{pad}}\t{}\t{:.3f}'.format(*f_path[:3], pad=max_length))
         
         # Plots
         if self.plot_opts['visitation']:
             self.plot_visitations(paths, self.plot_opts['visitation'])
         if self.plot_opts['aggregation']:
-            self.plot_aggregations(trie, self.plot_opts['aggregation'])
+            self.plot_opts['aggregation']['aggregations'] = aggregations
+            self.plot_aggregations(frequent_paths, self.plot_opts['aggregation'])
         
     
     def plot_visitations(self, paths, opts={}):
@@ -338,7 +343,7 @@ class GridMazeEnv(Env, Serializable):
             map_ax.scatter(*start, c='r', marker='o', s=50 )
             map_ax.scatter(*goal,  c='r', marker='x', s=50 )
             map_ax.scatter(*holes, c='k', marker='v', s=100)
-            map_ax.add_collection(PatchCollection([Rectangle(xy-0.5, 1, 1, fc='k') for xy in walls.T]))
+            map_ax.add_collection(PatchCollection([Rectangle(xy-0.5, 1, 1) for xy in walls.T], color='navy'))
         
         # Plot paths
         alpha = opts.get('alpha', 0.1)
@@ -356,6 +361,7 @@ class GridMazeEnv(Env, Serializable):
             pos = pos + np.random.normal(size=pos.shape, scale=noise)
             c = self.map_colors[map_idx % len(self.map_colors)]
             ax[map_idx].plot(pos[0], pos[1], ls='-', c=c, alpha=alpha)
+        
         # Save paths figure
         dir = opts.get('save', False)
         if dir:
@@ -367,17 +373,72 @@ class GridMazeEnv(Env, Serializable):
                 dir = logger.get_snapshot_dir()
             plt.savefig(os.path.join(dir, 'visitation{:0>3d}.png'.format(self.visitation_plot_num)))
             self.visitation_plot_num += 1
+        
         # Live plotting
         if opts.get('live', False):
             plt.gcf().canvas.draw()
             plt.waitforbuttonpress(timeout=0.001)
         
     
-    def plot_aggregations(self, trie, opts={}):
+    def plot_aggregations(self, frequent_paths, opts={}):
         '''
         Plot aggregation graphs, i.e. aggregated start and end for each frequent subpath from trie.
-        :param trie: subpaths statistics (PathTrie)
-        :param opts: plotting options: {'save': <directory or False>, 'live': <boolean>}  
+        :param frequent_paths: subpaths with statistics (list obtained by PathTrie.items())
+        :param opts: plotting options: {'save': <directory or False>, 'live': <boolean>, 'aggregations': <'all' or list>}  
         '''
-        # TODO
-        pass
+        n_paths = len(frequent_paths)
+        n_aggs = len(frequent_paths[0][3])
+        agg_labels = opts['aggregations']
+        if agg_labels == 'all':
+            agg_labels = PathTrie.all_aggregations
+        if not isinstance(agg_labels, list):
+            agg_labels = [agg_labels]
+        
+        # Prepare figure and GridSpecs
+        fig = plt.figure('Aggregations', figsize=(12,5))
+        plt.clf()
+        side = 0.025
+        gap = 0.015
+        gss = [plt.GridSpec(n_aggs, 2*n_paths, left = side+gap*n, right = (1-side)-gap*(n_paths-n), wspace=0.05) for n in range(n_paths)]
+        
+        # Plot aggregations
+        from matplotlib.pyplot import cm
+        for ai, agg_label in zip(range(n_aggs), agg_labels):
+                for pi in range(n_paths):
+                        # Construct start and end
+                        aggregated = frequent_paths[pi][3][agg_label]
+                        split = len(aggregated) // 2
+                        start_obs = aggregated[:split].reshape(self.obs_wide, self.obs_wide)
+                        end_obs   = aggregated[split:].reshape(self.obs_wide, self.obs_wide)
+                        # Prepare axes and plot start and end
+                        ax_s = fig.add_subplot(gss[pi][ai,pi*2])
+                        ax_e = fig.add_subplot(gss[pi][ai,pi*2+1])
+                        ax_s.imshow(start_obs, interpolation='nearest', cmap=cm.Blues, origin='upper')
+                        ax_e.imshow(end_obs  , interpolation='nearest', cmap=cm.Blues, origin='upper')
+                        # Grid, labels and ticks
+                        x_grid = np.arange(self.obs_wide + 1) - 0.5
+                        y_grid = np.arange(self.obs_wide + 1) - 0.5
+                        for ax in [ax_s, ax_e]:
+                            ax.plot(x_grid, np.stack([y_grid] * x_grid.size), ls='-', c='k', lw=1, alpha=0.4)
+                            ax.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-', c='k', lw=1, alpha=0.4)
+                            ax.set_xticks([])
+                            ax.set_yticks([])
+                        if pi == 0: ax_s.set_ylabel(agg_label, size='medium')
+                        if ai == 0: ax_s.set_title(frequent_paths[pi][0], loc='left')
+                    
+        # Save paths figure
+        dir = opts.get('save', False)
+        if dir:
+            if isinstance(dir, str):
+                dir = os.path.expanduser(dir)
+                if not os.path.isdir(dir):
+                    os.makedirs(dir)
+            else:
+                dir = logger.get_snapshot_dir()
+            plt.savefig(os.path.join(dir, 'aggregation{:0>3d}.png'.format(self.aggregation_plot_num)))
+            self.aggregation_plot_num += 1
+        
+        # Live plotting
+        if opts.get('live', False):
+            plt.gcf().canvas.draw()
+            plt.waitforbuttonpress(timeout=0.001)

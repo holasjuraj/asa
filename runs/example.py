@@ -24,7 +24,9 @@ def run_task(*_):
                                     'visitation': {'save':'~/rllab/data/local/asl-example/instant-run',
                                                    'live': True
                                                    },
-                                    #'aggregation': {}
+                                    'aggregation': {'save':'~/rllab/data/local/asl-example/instant-run',
+                                                   'live': True
+                                                   }
                                 },
                                 use_maps='all', #[0,1]
                                 ))
