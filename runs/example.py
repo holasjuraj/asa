@@ -21,11 +21,13 @@ from rllab.misc.instrument import run_experiment_lite
 
 def run_task(*_):
     env = normalize(GridMazeEnv(plot={
-                                    'visitation': {'save':'~/rllab/data/local/asl-example/instant-run',
-                                                   'live': True
+                                    'visitation': {#'save':'~/rllab/data/local/asl-example/instant-run',
+                                                   'save':'~/rllab/data/local/asl-example/aggregation-plot-2018_09_26_16_30',
+                                                   #'live': True
                                                    },
-                                    'aggregation': {'save':'~/rllab/data/local/asl-example/instant-run',
-                                                   'live': True
+                                    'aggregation': {#'save':'~/rllab/data/local/asl-example/instant-run',
+                                                   'save':'~/rllab/data/local/asl-example/aggregation-plot-2018_09_26_16_30',
+                                                   #'live': True
                                                    }
                                 },
                                 use_maps='all', #[0,1]
@@ -45,7 +47,7 @@ def run_task(*_):
         baseline=baseline,
         batch_size=5000,
         max_path_length=100,
-        n_itr=1,#25,
+        n_itr=25,
         discount=0.99,
         step_size=0.01,
         # Uncomment both lines (this and the plot parameter below) to enable plotting

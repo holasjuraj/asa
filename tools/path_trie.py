@@ -155,28 +155,35 @@ class PathTrie:
         :param action_map: dictionary from action numbers into chars (for better readability)
         :param min_count: return only paths with count min_count or more
         :param min_f_score: return only paths with f-score min_f_score or more
-        :param sort: sort result. Boolean, or list of field indexes to sort along, e.g.[2, 1] : count=1, f-score=2.
+        :param sort: sort result. Boolean, or list of dict keys to sort along, e.g.['f_score', 'count'].
                      Default sorting: (f-score DESC, count DESC, path-length DESC, path ASC)
         :param max_results: number of results to return, only applied if sort is used
         :param null_hyp_opts: override trie's counts of:
                               {'num_paths' : number of paths/roll-outs/episodes collected within the batch (int),
                                'num_steps' : total number of steps taken in batch (int)}
         :param aggregations: list of aggregations to compute on start/end observations, or 'all'
-        :return: [(path, count, f_score, aggregated_observations_dict, trie_node), ...]
+        :return: [{actions, actions_text, count, f_score, agg_observations, trie_node}, ...]
         '''
         paths = []
-        # TODO change: return list of dicts, not list of tuples
         # TODO add: some counting of std of paths within a node?
         
-        def top_to_path(top):
+        def top_to_actions(top):
             '''
-            Convert "top of trie" to list/text representation of path
+            Convert "top of trie" to list of actoins
             :param top: top of the trie - path (sequence of actions) in reverse order
             '''
+            return list(reversed(top))
+        
+        def map_actions_to_text(actions):
+            '''
+            Convert sequence of actions into readable form using action_map.
+            If action_map is None, then None is returned
+            :param actions: list - sequence of actions
+            '''
             if action_map is None:
-                return list(reversed(top))
+                return None
             else:
-                return ''.join( map(lambda a: action_map[a], reversed(top)) )
+                return ''.join( map(lambda a: action_map[a], actions) )
         
         def collect_subtree_items(node, top):
             '''
@@ -188,12 +195,15 @@ class PathTrie:
                 c = node.get_count()
                 f = self.apply_null_hyp(top, c, null_hyp_opts)
                 if c >= min_count and f >= min_f_score:
-                    paths.append([
-                        top_to_path(top),
-                        c,
-                        f,
-                        None, # aggregations will be computed later
-                        node] )
+                    actions = top_to_actions(top)
+                    paths.append({
+                            'actions': actions,
+                            'actions_text': map_actions_to_text(actions),
+                            'count': c,
+                            'f_score': f,
+                            'agg_observations': None, # aggregations will be computed later
+                            'trie_node': node
+                        } )
             if node.has_children():
                 for a in range(self.num_actions):
                     new_top = top + [a]
@@ -206,21 +216,23 @@ class PathTrie:
         # Sort
         if sort:
             def cmp(a, b): return (a > b) - (a < b)  # Java-like compareTo()
-            if not isinstance(sort, list): sort = [2, 1]
+            if not isinstance(sort, list): sort = ['f_score', 'count']
             def comparator(a, b):
                 res = 0
                 for i in sort:
                     res = res or -cmp(a[i], b[i])
-                return res or  -cmp(len(a[0]), len(b[0]))  or  cmp(a[0], b[0])
+                return  res \
+                        or -cmp(len(a['actions']), len(b['actions'])) \
+                        or  cmp(a['actions'], b['actions'])
             paths.sort(key=cmp_to_key(comparator))
             paths = paths[:min(len(paths), max_results)]
         
         # Compute aggregations for returning paths
         for path in paths:
-            node = path[4]
+            node = path['trie_node']
             # start and end observations are expected to be flattened vectors (no scalars or matrices)
             startsEnds = np.concatenate([node.get_starts(), node.get_ends()], axis=1)
-            path[3] = self.aggregate_observations(startsEnds, aggregations)
+            path['agg_observations'] = self.aggregate_observations(startsEnds, aggregations)
         
         return paths
 

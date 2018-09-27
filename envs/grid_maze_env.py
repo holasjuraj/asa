@@ -290,9 +290,13 @@ class GridMazeEnv(Env, Serializable):
                 max_results=10,
                 aggregations=aggregations
                 )
-        logger.log('ASA: Found {} frequent paths: [path, count f-score]'.format(len(frequent_paths)))
+        logger.log('ASA: Found {} frequent paths: [actions, count f-score]'.format(len(frequent_paths)))
         for f_path in frequent_paths:
-            logger.log('ASA: {:{pad}}\t{}\t{:.3f}'.format(*f_path[:3], pad=max_length))
+            logger.log('ASA: {:{pad}}\t{}\t{:.3f}'.format(
+                    f_path['actions_text'],
+                    f_path['count'],
+                    f_path['f_score'],
+                    pad=max_length))
         
         # Plots
         if self.plot_opts['visitation']:
@@ -386,13 +390,13 @@ class GridMazeEnv(Env, Serializable):
         :param frequent_paths: subpaths with statistics (list obtained by PathTrie.items())
         :param opts: plotting options: {'save': <directory or False>, 'live': <boolean>, 'aggregations': <'all' or list>}  
         '''
+        agg_names = opts['aggregations']
+        if agg_names == 'all':
+            agg_names = PathTrie.all_aggregations
+        if not isinstance(agg_names, list):
+            agg_names = [agg_names]
         n_paths = len(frequent_paths)
-        n_aggs = len(frequent_paths[0][3])
-        agg_labels = opts['aggregations']
-        if agg_labels == 'all':
-            agg_labels = PathTrie.all_aggregations
-        if not isinstance(agg_labels, list):
-            agg_labels = [agg_labels]
+        n_aggs = len(agg_names)
         
         # Prepare figure and GridSpecs
         fig = plt.figure('Aggregations', figsize=(12,5))
@@ -403,10 +407,10 @@ class GridMazeEnv(Env, Serializable):
         
         # Plot aggregations
         from matplotlib.pyplot import cm
-        for ai, agg_label in zip(range(n_aggs), agg_labels):
+        for ai, agg_name in zip(range(n_aggs), agg_names):
                 for pi in range(n_paths):
                         # Construct start and end
-                        aggregated = frequent_paths[pi][3][agg_label]
+                        aggregated = frequent_paths[pi]['agg_observations'][agg_name]
                         split = len(aggregated) // 2
                         start_obs = aggregated[:split].reshape(self.obs_wide, self.obs_wide)
                         end_obs   = aggregated[split:].reshape(self.obs_wide, self.obs_wide)
@@ -423,8 +427,13 @@ class GridMazeEnv(Env, Serializable):
                             ax.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-', c='k', lw=1, alpha=0.4)
                             ax.set_xticks([])
                             ax.set_yticks([])
-                        if pi == 0: ax_s.set_ylabel(agg_label, size='medium')
-                        if ai == 0: ax_s.set_title(frequent_paths[pi][0], loc='left')
+                        if pi == 0: ax_s.set_ylabel(agg_name, size='medium')
+                        if ai == 0: ax_s.set_title('{:s}\nf={:.3f}\n#={:d}'.format(
+                                    frequent_paths[pi]['actions_text'],
+                                    frequent_paths[pi]['f_score'],
+                                    frequent_paths[pi]['count'],
+                                    ),
+                                loc='left')
                     
         # Save paths figure
         dir = opts.get('save', False)
