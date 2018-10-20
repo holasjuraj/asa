@@ -6,7 +6,7 @@ from rllab.core.serializable import Serializable
 from rllab.misc.overrides import overrides
 from rllab.misc import logger
 import os
-from sandbox.asl.tools.path_trie import PathTrie
+from sandbox.asa.tools.path_trie import PathTrie
 
 import numpy as np
 import matplotlib
