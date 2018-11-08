@@ -13,13 +13,15 @@ class HierarchicalPolicy(Serializable):
             env_spec,
             top_policy,
             skill_policy_prototype,
-            skill_policies
+            skill_policies,
+            skill_max_timesteps
     ):
         Serializable.quick_init(self, locals())
         self._env_spec = env_spec
         self._top_policy = top_policy
         self._skill_policy_prototype = skill_policy_prototype
         self._skill_policies = skill_policies
+        self.skill_max_timesteps = skill_max_timesteps
         # Check top-level policy
         if not isinstance(top_policy.action_space, Discrete) \
                 or top_policy.action_space.n != self.num_skills:
