@@ -46,5 +46,4 @@ class SkillLearningEnv(ProxyEnv, Serializable):
     @overrides
     def reset(self, **kwargs):
         start_obs = self._start_obss[np.random.randint(self._num_obs), :]
-        # TODO wrapped environment must support initiating with start_obs
         return self._wrapped_env.reset(start_obs=start_obs, **kwargs)

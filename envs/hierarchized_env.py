@@ -40,7 +40,6 @@ class HierarchizedEnv(ProxyEnv, Serializable):
                              max_path_length=self.hrl_policy.skill_max_timesteps,
                              reset_start_rollout=True  # do not reset the env, continue from current state
                              )
-        # TODO wrapped environment must support get_current_obs()
         next_obs = self.wrapped_env.get_current_obs()
         reward = np.sum(skill_path['rewards'])
         term = skill_path['terminated'][-1]
