@@ -5,7 +5,7 @@ from rllab.envs.base import Step
 from rllab.envs.proxy_env import ProxyEnv
 from rllab.spaces import Discrete
 from rllab.misc.overrides import overrides
-from sandbox.asa.sampler.utils import rollout
+from sandbox.asa.sampler.utils import skill_rollout
 
 
 class HierarchizedEnv(ProxyEnv, Serializable):
@@ -17,7 +17,7 @@ class HierarchizedEnv(ProxyEnv, Serializable):
         """
         Creates a top-level environment for a HRL agent. Original env`s actions are replaced by N discrete actions,
         N being the number of skills.
-        :param env: Environment to wrap
+        :param env: AsaEnv environment to wrap
         :param hrl_policy: A HierarchicalPolicy containing all current skill policies
         """
         Serializable.quick_init(self, locals())
@@ -35,11 +35,12 @@ class HierarchizedEnv(ProxyEnv, Serializable):
 
     @overrides
     def step(self, action):
-        skill_path = rollout(env=self._wrapped_env,
-                             agent=self.hrl_policy.get_skill_policy(action),
-                             max_path_length=self.hrl_policy.skill_max_timesteps,
-                             reset_start_rollout=True  # do not reset the env, continue from current state
-                             )
+        skill_path = skill_rollout(env=self.wrapped_env,
+                                   agent=self.hrl_policy.get_skill_policy(action),
+                                   skill_stopping_func=self.hrl_policy.get_skill_stopping_func(action),
+                                   max_path_length=self.hrl_policy.skill_max_timesteps,
+                                   reset_start_rollout=False  # do not reset the env, continue from current state
+                                   )
         next_obs = self.wrapped_env.get_current_obs()
         reward = np.sum(skill_path['rewards'])
         term = skill_path['terminated'][-1]

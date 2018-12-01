@@ -8,6 +8,10 @@ class SkillExecutionEnv(ProxyEnv, Serializable):
             env
     ):
         """
+        ABORTED: Functionality is replaced by sampler.utils.skill_rollout() .
+        REASON: This environment would override (thus hide) wrapped env`s termination signal, which is required to be
+                propagated to HierarchizedEnv.step() and further "out".
+
         Creates an environment executing a single (learnt) skill. Trajectory is terminated upon reaching end_obs state.
         :param env: Environment to wrap
         """

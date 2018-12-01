@@ -1,5 +1,6 @@
 from rllab.core.serializable import Serializable
 from rllab.spaces import Discrete
+import numpy as np
 
 
 class HierarchicalPolicy(Serializable):
@@ -30,6 +31,8 @@ class HierarchicalPolicy(Serializable):
         self._top_policy = top_policy
         self._skill_policy_prototype = skill_policy_prototype
         self._skill_policies = skill_policies
+        self._num_orig_skills = len(skill_policies)
+        self._skills_end_obss = [np.array([])] * self._num_orig_skills    # pad to align indexes with skill_policies
         self.skill_max_timesteps = skill_max_timesteps
         # Check top-level policy
         if not isinstance(top_policy.action_space, Discrete) \
@@ -55,7 +58,19 @@ class HierarchicalPolicy(Serializable):
         """
         return self._skill_policies[i]
 
-    def create_new_skill(self):
+    def get_skill_stopping_func(self, i):
+        """
+        :param i: Number of skill
+        :return: function ({actions, observations} -> bool) that indicates that skill execution is done
+        """
+        if i < self._num_orig_skills:
+            # Stopping criterion of original skills - to be overwritten if needed
+            return lambda path: False
+        else:
+            # Stopping criterion of ASA-trained skills
+            return lambda path: path['observations'][-1] in self._skills_end_obss[i]
+
+    def create_new_skill(self, end_obss):
         """
         Create new untrained skill and add it to skills list.
         :return: new skill policy and skill ID (index of the skill)
@@ -63,4 +78,5 @@ class HierarchicalPolicy(Serializable):
         """
         new_skill_pol = Serializable.clone(self._skill_policy_prototype)
         self._skill_policies.append(new_skill_pol)
+        self._skills_end_obss.append(np.copy(end_obss))
         return new_skill_pol, len(self._skill_policies) - 1

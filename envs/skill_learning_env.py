@@ -15,7 +15,7 @@ class SkillLearningEnv(ProxyEnv, Serializable):
         """
         Creates an environment tailored to train a single (missing) skill. Trajectories are initialized in start_obss
         state and terminated (and reward is generated) upon reaching end_obs state.
-        :param env: Environment to wrap
+        :param env: AsaEnv environment to wrap
         :param start_obss: Tensor of experienced starting observations (where skill should initiate)
         :param end_obss: Tensor of experienced ending observations (where skill should terminate)
         """
@@ -38,6 +38,7 @@ class SkillLearningEnv(ProxyEnv, Serializable):
     @overrides
     def step(self, action):
         obs, _, term, info = self._wrapped_env.step(action)
+        # TODO terminate if *any* end_obs is reached, or end_obs belonging to start_obs we started from?
         skill_term = obs in self._end_obss
         surr_reward = 1 if skill_term else 0
         surr_term = term or skill_term

@@ -4,20 +4,22 @@ from rllab.misc import tensor_utils
 from rllab.envs.normalized_env import NormalizedEnv
 
 
-def rollout(env,
-            agent,
-            max_path_length=np.inf,
-            reset_start_rollout=True,
-            keep_rendered_rgbs=False,
-            animated=False,
-            speedup=1
-            ):
+def skill_rollout(env,
+                  agent,
+                  max_path_length=np.inf,
+                  skill_stopping_func=None,
+                  reset_start_rollout=True,
+                  keep_rendered_rgbs=False,
+                  animated=False,
+                  speedup=1
+                  ):
     """
     Perform one rollout in given environment.
     Code by https://github.com/florensacc/snn4hrl
-    :param env: Environment to run in
+    :param env: AsaEnv environment to run in
     :param agent: Policy to sample actions from
     :param max_path_length: force terminate the rollout after this many steps
+    :param skill_stopping_func: function ({actions, observations} -> bool) that indicates that skill execution is done
     :param reset_start_rollout: whether to reset the env when calling this function
     :param keep_rendered_rgbs: whether to keep a list of all rgb_arrays (for future video making)
     :param animated: whether to render env after each step
@@ -52,10 +54,15 @@ def rollout(env,
         agent_infos.append(agent_info)
         env_infos.append(env_info)
         path_length += 1
+        # natural termination
         if d:
             terminated.append(1)
             break
         terminated.append(0)
+        # skill decides to terminate
+        if skill_stopping_func(actions, observations):
+            break
+
         o = next_o
         if keep_rendered_rgbs:  # will return a new entry to the path dict with all rendered images
             rendered_rgbs.append(env.render(mode='rgb_array'))
