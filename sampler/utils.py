@@ -60,7 +60,7 @@ def skill_rollout(env,
             break
         terminated.append(0)
         # skill decides to terminate
-        if skill_stopping_func(actions, observations):
+        if skill_stopping_func and skill_stopping_func(actions, observations):
             break
 
         o = next_o

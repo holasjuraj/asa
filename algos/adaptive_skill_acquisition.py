@@ -1,6 +1,9 @@
 from rllab.algos.batch_polopt import BatchPolopt
+from rllab.core.serializable import Serializable
 from rllab.misc.overrides import overrides
+import rllab.misc.logger as logger
 from sandbox.asa.envs.skill_learning_env import SkillLearningEnv
+from sandbox.asa.utils.path_trie import PathTrie
 
 
 class AdaptiveSkillAcquisition(BatchPolopt):
@@ -48,34 +51,88 @@ class AdaptiveSkillAcquisition(BatchPolopt):
     @overrides
     def get_itr_snapshot(self, itr, samples_data):
         res = self._top_algo.get_itr_snapshot(itr, samples_data)
-        # TODO res['some hrl stuff?'] = None
+        # TODO? res['some hrl stuff'] = None
         return res
 
     @overrides
     def optimize_policy(self, itr, samples_data):
         self._top_algo.optimize_policy(itr, samples_data)
-        # TODO change pseudo-code to actual code:
-        if self.decide_new_skill(samples_data):
-            start_obss, end_obss = self.extract_start_end_obss(samples_data)
-            self.train_new_skill(start_obss, end_obss)
+        with logger.prefix('ASA | '):
+            make_skill, start_obss, end_obss = self.decide_new_skill(samples_data)
+            if make_skill:
+                self.make_new_skill(start_obss, end_obss)
+                # TODO integrate skill into top-level policy
 
     def decide_new_skill(self, samples_data):
-        # TODO
-        pass
+        """
+        Decide if new skill should be made. If yes, return also start and end observations for training.
+        :param samples_data: processed sampled data:
+                dict(observations, actions, advantages, rewards, returns, valids, agent_infos, env_infos, paths)
+        :return: (bool: make new skill, start_obss, end_obss)
+        """
+        # TODO extract Trie parameters
+        min_length = 3
+        max_length = 10
+        action_map = {0: 'L', 1: 's'}
+        min_f_score = 20
+        max_results = 10
+        aggregations = ['mean']  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
 
-    def extract_start_end_obss(self, samples_data):
-        # TODO
-        pass
+        # TODO? share path trie among more batches?
+        paths = samples_data['paths']
+        path_trie = PathTrie(self._hrl_policy.num_skills)
+        for path in paths:
+            actions = path['actions'].argmax(axis=1).tolist()
+            observations = path['observations']
+            path_trie.add_all_subpaths(actions,
+                                       observations,
+                                       min_length=min_length,
+                                       max_length=max_length)
+        logger.log('Searched {} rollouts'.format(len(paths)))
 
-    def train_new_skill(self, start_obss, end_obss):
-        # TODO
-        new_skill_pol = self._hrl_policy.create_new_skill()  # blank policy to be trained
-        baseline = self._low_algo_kwargs.get('baseline', self.baseline)
-        # baseline = type(baseline)(...)  # TODO! change to fresh baseline
-        self._low_algo_kwargs['baseline'] = self.baseline
+        frequent_paths = path_trie.items(
+            action_map=action_map,
+            min_count=len(paths) * 2,   # TODO? what about this?
+            min_f_score=min_f_score,
+            max_results=max_results,
+            aggregations=aggregations
+        )
+        logger.log('Found {} frequent paths: [actions, count f-score]'.format(len(frequent_paths)))
+        for f_path in frequent_paths:
+            logger.log('    {:{pad}}\t{}\t{:.3f}'.format(
+                f_path['actions_text'],
+                f_path['count'],
+                f_path['f_score'],
+                pad=max_length))
 
-        algo = self._low_algo_cls(env=SkillLearningEnv(env=self.env._wrapped_env,
-                                                       start_obss=start_obss,
-                                                       end_obss=end_obss),
+        # TODO? some more clever mechanism to decide if we need a new skill.
+        # As-is, we take the subpath with highest f-score if it is grater then min_f_score. If no such subpath was
+        # found, then no skill is created.
+        # Hence Trie parameters should be max_results = 1, min_f_score = <some reasonably high number, e.g. 20>
+        if len(frequent_paths) == 0:
+            return False, None, None
+        top_subpath = frequent_paths[0]
+        return True, top_subpath.start_observations, top_subpath.end_observations
+
+    def make_new_skill(self, start_obss, end_obss):
+        """
+        Create and train a new skill based on given start and end observations
+        """
+        new_skill_pol = self._hrl_policy.create_new_skill(end_obss)  # blank policy to be trained
+
+        learning_env = SkillLearningEnv(env=self.env.wrapped_env,
+                                        start_obss=start_obss,
+                                        end_obss=end_obss)
+
+        la_kwargs = dict(self._low_algo_kwargs)
+        baseline_to_clone = la_kwargs.get('baseline', self.baseline)
+        if baseline_to_clone:
+            baseline = Serializable.clone(baseline_to_clone)    # to create blank baseline
+            la_kwargs['baseline'] = baseline
+
+        algo = self._low_algo_cls(env=learning_env,
                                   policy=new_skill_pol,
                                   **self._low_algo_kwargs)
+
+        with logger.prefix('Skill {} | '.format(self._hrl_policy.num_skills - 1)):
+            algo.train()
