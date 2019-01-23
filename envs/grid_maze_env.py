@@ -1,17 +1,19 @@
-from rllab.envs.base import Env
-from rllab.spaces import Discrete, Box
-from rllab.envs.base import Step
-
-from rllab.core.serializable import Serializable
-from rllab.misc.overrides import overrides
-from rllab.misc import logger
-import os
-from sandbox.asa.tools.path_trie import PathTrie
-
 import numpy as np
 import matplotlib
 matplotlib.use('qt5Agg')
 import matplotlib.pyplot as plt
+
+# from garage.envs.base import GarageEnv
+from gym import Env
+from gym.spaces import Discrete, Box
+from garage.envs.base import Step
+
+from garage.core.serializable import Serializable
+from garage.misc.overrides import overrides
+from garage.misc import logger
+import os
+from sandbox.asa.tools.path_trie import PathTrie
+
 
 
 
@@ -82,20 +84,22 @@ class GridMazeEnv(Env, Serializable):
         self.current_map_idx = None
         self.agent_pos = None
         self.agent_ori = None
+        # self.spec = EnvSpec(self.observation_space, self.action_space)
         
         # Maps initialization
         if use_maps == 'all':
-            self.maps = self.all_maps
+            maps = self.all_maps
         else:
-            self.maps = [self.all_maps[i] for i in use_maps]
+            maps = [self.all_maps[i] for i in use_maps]
+        self.maps = []
         self.bit_maps = []
-        for i in range(len(self.maps)):
+        for i in range(len(maps)):
             # Normalize char map
-            m = np.array([list(row.upper()) for row in self.maps[i]])
+            m = np.array([list(row.upper()) for row in maps[i]])
             m[np.logical_or(m == '.', m == ' ')] = 'F'
             m[np.logical_or(m == 'X', m == '#')] = 'W'
             m[m == 'O'] = 'H'
-            self.maps[i] = m
+            self.maps.append(m)
             # Make bit map
             bm_inner = np.zeros(m.shape)
             bm_inner[np.logical_or(m == 'W', m == 'H')] = 1
@@ -130,7 +134,7 @@ class GridMazeEnv(Env, Serializable):
         '''
         0 = free space, 1 = wall/hole
         '''
-        return Box(low=0., high=1., shape=(self.obs_wide, self.obs_wide))
+        return Box(low=0, high=1, shape=(self.obs_wide, self.obs_wide), dtype=np.float32)
 
 
     def reset(self):
