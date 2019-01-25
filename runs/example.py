@@ -4,7 +4,7 @@ from builtins import input
 
 # Policy optimization algorithm
 from sandbox.asa.algos.asa_wrapper import ASAWrapper
-from garage.theano.algos.trpo import TRPO
+from garage.tf.algos.trpo import TRPO
 
 # Baseline for Advantage function { A(s) = V(s) - B(s) }
 from garage.baselines.linear_feature_baseline import LinearFeatureBaseline
@@ -12,17 +12,17 @@ from garage.baselines.linear_feature_baseline import LinearFeatureBaseline
 # Environment
 from sandbox.asa.envs.grid_maze_env import GridMazeEnv
 from garage.envs.normalized_env import normalize
-from garage.theano.envs import TheanoEnv
+from garage.tf.envs import TfEnv
 
 # Policy network
-from garage.theano.policies.categorical_mlp_policy import CategoricalMLPPolicy
+from garage.tf.policies.categorical_mlp_policy import CategoricalMLPPolicy
 
 # Experiment-running util
 from garage.experiment import run_experiment
 
 
 def run_task(*_):
-    env = TheanoEnv(normalize(GridMazeEnv(use_maps='all',  # [0,1]
+    env = TfEnv(normalize(GridMazeEnv(use_maps='all',  # [0,1]
                                           )))
 
     policy = CategoricalMLPPolicy(

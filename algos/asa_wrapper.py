@@ -3,7 +3,7 @@ import matplotlib
 matplotlib.use('qt5Agg')
 import matplotlib.pyplot as plt
 
-from garage.algos.batch_polopt import BatchPolopt
+from garage.tf.algos.batch_polopt import BatchPolopt
 from garage.core.serializable import Serializable
 from garage.misc.overrides import overrides
 import garage.misc.logger as logger
@@ -31,14 +31,15 @@ class ASAWrapper(BatchPolopt):
                 {'visitation': <opts>, 'aggregation': <opts>}
                 where opts = {'save': <directory or False>, 'live': <boolean> [, 'alpha': <0..1>][, 'noise': <0..1>]}
         """
-        super().__init__(env=env,
-                         policy=policy,
-                         baseline=baseline,
-                         **kwargs)
         self._top_algo = top_algo_cls(env=env,
                                       policy=policy,
                                       baseline=baseline,
                                       **kwargs)
+        super().__init__(env=env,
+                         policy=policy,
+                         baseline=baseline,
+                         **kwargs)
+        self.sampler = self._top_algo.sampler
             
         # Plotting
         self.visitation_plot_num = 0
@@ -55,7 +56,8 @@ class ASAWrapper(BatchPolopt):
 
     @overrides
     def init_opt(self):
-        self._top_algo.init_opt()
+        res = self._top_algo.init_opt()
+        return res
 
     @overrides
     def get_itr_snapshot(self, itr, samples_data):
