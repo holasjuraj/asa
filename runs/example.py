@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
+from builtins import input
 
 # Policy optimization algorithm
-from builtins import input
+from sandbox.asa.algos.asa_wrapper import ASAWrapper
 from garage.theano.algos.trpo import TRPO
 
 # Baseline for Advantage function { A(s) = V(s) - B(s) }
@@ -21,18 +22,8 @@ from garage.experiment import run_experiment
 
 
 def run_task(*_):
-    env = TheanoEnv(normalize(GridMazeEnv(plot={
-                                                'visitation': {#'save':'~/garage/data/asa-example/instant-run',
-                                                               # 'save':'~/garage/data/asa-example/aggregation-plot-2018_09_26_16_30',
-                                                               'live': True
-                                                               },
-                                                'aggregation': {#'save':'~/garage/data/asa-example/instant-run',
-                                                               # 'save':'~/garage/data/asa-example/aggregation-plot-2018_09_26_16_30',
-                                                               # 'live': True
-                                                               }
-                                            },
-                                            use_maps='all',  # [0,1]
-                                            )))
+    env = TheanoEnv(normalize(GridMazeEnv(use_maps='all',  # [0,1]
+                                          )))
 
     policy = CategoricalMLPPolicy(
         env_spec=env.spec,
@@ -42,18 +33,28 @@ def run_task(*_):
 
     baseline = LinearFeatureBaseline(env_spec=env.spec)
 
-    algo = TRPO(
-        env=env,
-        policy=policy,
-        baseline=baseline,
-        batch_size=5000,
-        max_path_length=100,
-        n_itr=25,
-        discount=0.99,
-        step_size=0.01,
-        # Uncomment both lines (this and the plot parameter below) to enable plotting
-        plot=True
-    )
+    algo = ASAWrapper(
+                      env=env,
+                      policy=policy,
+                      baseline=baseline,
+                      top_algo_cls=TRPO,
+                      batch_size=5000,
+                      max_path_length=100,
+                      n_itr=25,
+                      discount=0.99,
+                      step_size=0.01,
+                      # Uncomment both lines (this and the plot parameter below) to enable plotting
+                      asa_plot={
+                                'visitation': {#'save':'~/garage/data/asa-example/instant-run',
+                                               # 'save':'~/garage/data/asa-example/aggregation-plot-2018_09_26_16_30',
+                                               'live': True
+                                               },
+                                'aggregation': {#'save':'~/garage/data/asa-example/instant-run',
+                                               # 'save':'~/garage/data/asa-example/aggregation-plot-2018_09_26_16_30',
+                                               # 'live': True
+                                               }
+                                }
+                )
     algo.train()
 
 
