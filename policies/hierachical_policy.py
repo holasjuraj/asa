@@ -1,5 +1,6 @@
-from rllab.core.serializable import Serializable
-from rllab.spaces import Discrete
+from garage.core.serializable import Serializable
+from garage.spaces import Discrete
+# TODO probably change to garage.[tf|theano].spaces.Discrete
 import numpy as np
 
 
@@ -46,7 +47,7 @@ class HierarchicalPolicy(Serializable):
     def get_top_policy(self):
         """
         :return: Policy of top-level agent
-        :rtype: rllab.policies.base.Policy
+        :rtype: garage.policies.base.Policy
         """
         return self._top_policy
 
@@ -54,7 +55,7 @@ class HierarchicalPolicy(Serializable):
         """
         :param i: Number of skill
         :return: Policy of selected skill
-        :rtype: rllab.policies.base.Policy
+        :rtype: garage.policies.base.Policy
         """
         return self._skill_policies[i]
 
@@ -74,7 +75,7 @@ class HierarchicalPolicy(Serializable):
         """
         Create new untrained skill and add it to skills list.
         :return: new skill policy and skill ID (index of the skill)
-        :rtype: (rllab.policies.base.Policy, int)
+        :rtype: tuple(garage.policies.base.Policy, int)
         """
         new_skill_pol = Serializable.clone(self._skill_policy_prototype)
         self._skill_policies.append(new_skill_pol)

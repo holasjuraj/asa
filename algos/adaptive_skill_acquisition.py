@@ -1,7 +1,8 @@
-from rllab.algos.batch_polopt import BatchPolopt
-from rllab.core.serializable import Serializable
-from rllab.misc.overrides import overrides
-import rllab.misc.logger as logger
+from garage.algos.batch_polopt import BatchPolopt
+# TODO for TF use: garage.tf.algos.batch_polopt
+from garage.core.serializable import Serializable
+from garage.misc.overrides import overrides
+import garage.misc.logger
 from sandbox.asa.envs.skill_learning_env import SkillLearningEnv
 from sandbox.asa.utils.path_trie import PathTrie
 
@@ -31,14 +32,15 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         :param low_algo_cls: class of RL algorithm for training low-level agents - each new skill.
         :param low_algo_kwargs: additional kwargs for low-level algorithm (don`t have to provide env, policy, baseline)
         """
-        super().__init__(env,
-                         hrl_policy.get_top_policy(),
-                         baseline,
-                         **kwargs)
         self._top_algo = top_algo_cls(env,
                                       hrl_policy.get_top_policy(),
                                       baseline,
                                       **top_algo_kwargs)
+        super().__init__(env,
+                         hrl_policy.get_top_policy(),
+                         baseline,
+                         **kwargs)
+        self.sampler = self._top_algo.sampler
         self._low_algo_cls = low_algo_cls
         self._low_algo_kwargs = low_algo_kwargs
         self._hrl_policy = hrl_policy
@@ -46,7 +48,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
 
     @overrides
     def init_opt(self):
-        self._top_algo.init_opt()
+        return self._top_algo.init_opt()
 
     @overrides
     def get_itr_snapshot(self, itr, samples_data):
@@ -120,11 +122,12 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         """
         new_skill_pol = self._hrl_policy.create_new_skill(end_obss)  # blank policy to be trained
 
-        learning_env = SkillLearningEnv(env=self.env.wrapped_env,
+        learning_env = SkillLearningEnv(env=self.env.env,  # environment wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
                                         start_obss=start_obss,
                                         end_obss=end_obss)
 
         la_kwargs = dict(self._low_algo_kwargs)
+        # We need to clone baselline, as each skill policy must have its own instance
         baseline_to_clone = la_kwargs.get('baseline', self.baseline)
         if baseline_to_clone:
             baseline = Serializable.clone(baseline_to_clone)    # to create blank baseline

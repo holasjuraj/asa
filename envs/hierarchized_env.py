@@ -1,14 +1,14 @@
 import numpy as np
 
-from rllab.core.serializable import Serializable
-from rllab.envs.base import Step
-from rllab.envs.proxy_env import ProxyEnv
-from rllab.spaces import Discrete
-from rllab.misc.overrides import overrides
+from garage.core.serializable import Serializable
+from garage.misc.overrides import overrides
+from gym import Wrapper
+from garage.envs.base import Step
+from gym.spaces import Discrete
 from sandbox.asa.sampler.utils import skill_rollout
 
 
-class HierarchizedEnv(ProxyEnv, Serializable):
+class HierarchizedEnv(Wrapper, Serializable):
     def __init__(
             self,
             env,
@@ -21,7 +21,7 @@ class HierarchizedEnv(ProxyEnv, Serializable):
         :param hrl_policy: A HierarchicalPolicy containing all current skill policies
         """
         Serializable.quick_init(self, locals())
-        ProxyEnv.__init__(self, env)
+        Wrapper.__init__(self, env)
         self.hrl_policy = hrl_policy
 
     @property
@@ -35,13 +35,13 @@ class HierarchizedEnv(ProxyEnv, Serializable):
 
     @overrides
     def step(self, action):
-        skill_path = skill_rollout(env=self.wrapped_env,
+        skill_path = skill_rollout(env=self.env,
                                    agent=self.hrl_policy.get_skill_policy(action),
                                    skill_stopping_func=self.hrl_policy.get_skill_stopping_func(action),
                                    max_path_length=self.hrl_policy.skill_max_timesteps,
                                    reset_start_rollout=False  # do not reset the env, continue from current state
                                    )
-        next_obs = self.wrapped_env.get_current_obs()
+        next_obs = self.env.get_current_obs()
         reward = np.sum(skill_path['rewards'])
         term = skill_path['terminated'][-1]
         return Step(next_obs, reward, term)
