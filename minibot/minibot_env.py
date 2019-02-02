@@ -12,8 +12,6 @@ from garage.misc.overrides import overrides
 from garage.misc import logger
 
 
-
-
 class MinibotEnv(Env, Serializable):
     '''
     Simulated two-wheeled robot in an environment with obstacles.
@@ -126,11 +124,14 @@ class MinibotEnv(Env, Serializable):
         return Box(low=0, high=1, shape=(self.obs_wide, self.obs_wide), dtype=np.float32)
 
 
-    def reset(self):
+    def reset(self, map_idx=None):
         '''
         Choose random map for this rollout, init agent facing north.
         '''
-        self.current_map_idx = np.random.choice(len(self.maps))
+        if map_idx:
+            self.current_map_idx = map_idx
+        else:
+            self.current_map_idx = np.random.choice(len(self.maps))
         m = self.maps[self.current_map_idx]
         (start_r,), (start_c,) = np.nonzero(m == 'S')
         self.agent_pos = self._rc_to_xy([start_r, start_c])
@@ -144,14 +145,14 @@ class MinibotEnv(Env, Serializable):
         '''
         if self.discretized:
             # discretization from {<-1,-0.33> , <-0.33,0.33> , <0.33,1>} to [-1, 0, 1]
-            action = np.clip(np.ronud(action * 1.5), a_min=-1, a_max=1)
+            action = np.clip(np.round(action * 1.5), a_min=-1, a_max=1)
         # Set new state
         next_pos, next_ori = self._get_new_position(action)
         self.agent_pos = next_pos
         self.agent_ori = next_ori
         # Determine reward and termination
         m = self._get_current_map()
-        next_state_type = m[next_r, next_c]
+        next_state_type = self._tile_type_at_pos(next_pos)
         if next_state_type == 'H':
             done = True
             reward = -1
@@ -187,34 +188,36 @@ class MinibotEnv(Env, Serializable):
         # Collision detection
         t0 = np.round(pos0)  # starting tile
         t1 = np.round(pos1)  # ending tile
-        if self._tile_at_pos(pos1) != 'W':  # no collision (t1=='W' also implies t1 != t0)
+        if self._tile_type_at_pos(pos1) != 'W':  # no collision (t1=='W' also implies t1 != t0)
             return pos1, ori1
 
         dtx = t0[0] != t1[0]  # was tile changed in x-direction
         dty = t0[1] != t1[1]  # was tile changed in y-direction
         mid_x, mid_y = (t0 + t1) / 2
+        near_wall_x = mid_x - np.sign(move_vector[0]) * 0.01
+        near_wall_y = mid_y - np.sign(move_vector[1]) * 0.01
         if dtx and not dty:  # bumped into wall E/W
-            pos1[0] = mid_x
+            pos1[0] = near_wall_x
             return pos1, ori1
         if dty and not dtx:  # bumped into wall N/S
-            pos1[1] = mid_y
+            pos1[1] = near_wall_y
             return pos1, ori1
 
         # now we know: t1=='W' , dtx , dty ... i.e. we moved diagonally, traversing another tile either on E/W xor on N/S
-        t_ew_wall = self._tile_at_pos((t1[0], t0[1])) == 'W'
-        t_ns_wall = self._tile_at_pos((t0[0], t1[1])) == 'W'
+        t_ew_wall = self._tile_type_at_pos((t1[0], t0[1])) == 'W'
+        t_ns_wall = self._tile_type_at_pos((t0[0], t1[1])) == 'W'
         if not t_ew_wall  and  not t_ns_wall:
-            t = (mid_x - pos0[0]) / (pos1[0] - pos0[0])
-            y_t = pos0[1] + t * move_vector[1]
-            if y_t < mid_y:  # travelled through empty tile on E/W, bumped into wall on N/S
-                pos1[1] = mid_y
+            tx = (mid_x - pos0[0]) / (pos1[0] - pos0[0])
+            ty = (mid_y - pos0[1]) / (pos1[1] - pos0[1])
+            if tx < ty:  # travelled through empty tile on E/W, bumped into wall on N/S
+                pos1[1] = near_wall_y
             else:            # travelled through empty tile on N/S, bumped into wall on E/W
-                pos1[0] = mid_x
+                pos1[0] = near_wall_x
             return pos1, ori1
         if t_ew_wall:  # bumped into wall on E/W
-            pos1[0] = mid_x
+            pos1[0] = near_wall_x
         if t_ns_wall:  # bumped into wall on N/S
-            pos1[1] = mid_y
+            pos1[1] = near_wall_y
         # combination of last two: bumped into corner
         return pos1, ori1
 
@@ -231,11 +234,11 @@ class MinibotEnv(Env, Serializable):
 
         if np.abs(al - ar) < self.EPSILON:
             # al == ar -> Agent moves in straight line
-            move_vector = np.array([0, al])
+            relative_move_vector = np.array([0, al])
             ori_change = 0
         elif np.abs(al + ar) < self.EPSILON:
             # al == -ar -> Agent rotates in place
-            move_vector = np.array([0, 0])
+            relative_move_vector = np.array([0, 0])
             ori_change = ar * 2 / w
         else:
             # Agent moves and rotates at the same time
@@ -247,10 +250,10 @@ class MinibotEnv(Env, Serializable):
             me_pos = self._rotation_matrix(alpha) @ me_pos    # 2) rotate
             me_pos = me_pos + rot_center                      # 3) move back
             # Vector me_pos now represents in which direction the agent should move !!! in his frame of reference !!!
-
-            move_vector = self._rotation_matrix(self.agent_ori) @ me_pos
+            relative_move_vector = me_pos
             ori_change = alpha
-        return move_vector, ori_chang
+        absolute_move_vector = self._rotation_matrix(self.agent_ori) @ relative_move_vector
+        return absolute_move_vector, ori_change
 
 
     def _rotation_matrix(self, alpha):
@@ -262,7 +265,7 @@ class MinibotEnv(Env, Serializable):
         return np.array([[cos, -sin], [sin, cos]])
 
 
-    def _tile_at_pos(self, position, bitmap=False):
+    def _tile_type_at_pos(self, position, bitmap=False):
         '''
         Return type of tile at given X,Y position.
         '''
@@ -270,7 +273,7 @@ class MinibotEnv(Env, Serializable):
         rows, cols = m.shape
         x, y = np.round(position)
         r, c = self._xy_to_rc([x, y])
-        if r < 0 || c < 0 || r >= rows || c >= cols:
+        if r < 0 or c < 0 or r >= rows or c >= cols:
             return 1 if bitmap else 'W'
         return m[r, c]
 
@@ -306,14 +309,14 @@ class MinibotEnv(Env, Serializable):
 
     def _xy_to_rc(self, pos, rows=None):
         '''
-        Get position as [row, column], instead of [X,Y].
+        Get position as [row, column], instead of [X,Y]. Original [X,Y] position will be rounded to nearest tile.
         :param pos: (x,y) position
         :param rows: number of rows in a map, or None (current map is used)
         '''
-        x, y = pos
+        x, y = np.round(pos)
         if rows is None:
             rows, _ = self._get_current_map().shape
-        return np.array([rows - y - 1, x])
+        return np.array([rows - y - 1, x], dtype='int32')
 
 
     def _get_current_map(self, bitmap=False):

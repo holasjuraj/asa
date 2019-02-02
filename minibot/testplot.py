@@ -3,10 +3,12 @@ import matplotlib
 matplotlib.use('qt5Agg')
 import matplotlib.pyplot as plt
 
+from minibot_env import MinibotEnv
 
-class Bot:
+
+class TestBot(MinibotEnv):
     '''
-    Little test to visually check correctness of robot`s moves.
+    Trimmed-down version of MiniBot to test _get_raw_move().
     '''
     EPSILON = 0.0001
     def __init__(self):
@@ -15,59 +17,99 @@ class Bot:
         self.agent_position = np.array([0., 0.])
         self.agent_ori = 0.
 
-    def _get_move(self, action):
-        '''
-        Computes
-        1) a vector: in which direction should the agent moves !!! in his frame of reference !!!
-        2) orientation change
-        '''
-        al, ar = action * self.max_action_distance  # scale motor power <-1,1> to actual distance <-0.2,0.2>
-        w = self.agent_width
-
-        if np.abs(al - ar) < self.EPSILON:
-            # al == ar -> Agent moves in straight line
-            relative_move_vector = np.array([0., al])
-            ori_change = 0
-        elif np.abs(al + ar) < self.EPSILON:
-            # al == -ar -> Agent rotates in place
-            relative_move_vector = np.array([0., 0.])
-            ori_change = ar * 2 / w
-        else:
-            # Agent moves and rotates at the same time
-            r = (w * (ar + al)) / (2 * (ar - al))
-            alpha = (ar + al) / (2 * r)
-            me_pos = np.array([0., 0.])  # agent`s position in his frame of reference
-            rot_center = np.array([-r, 0.])
-            me_pos = me_pos - rot_center                      # 1) move to rotation center
-            me_pos = self._rotation_matrix(alpha) @ me_pos    # 2) rotate
-            me_pos = me_pos + rot_center                      # 3) move back
-            # Vector me_pos now represents in which direction the agent should move !!! in his frame of reference !!!
-            relative_move_vector = me_pos
-            ori_change = alpha
-        absolute_move_vector = self._rotation_matrix(self.agent_ori) @ relative_move_vector
-        return (absolute_move_vector, ori_change)
-
-    def _rotation_matrix(self, alpha):
-        sin = np.sin(alpha)
-        cos = np.cos(alpha)
-        return np.array([[cos, -sin], [sin, cos]])
-
     def move(self, action):
-        mv, oc = self._get_move(action)
+        mv, oc = self._get_raw_move(action)
         self.agent_position += mv
         self.agent_ori += oc
 
-if __name__ == '__main__':
-    bot = Bot()
-    eps = 100
-    trajectory = np.zeros((2, eps+1))
-    trajectory[:, 0] = bot.agent_position
-    for ep in range(eps):
-        a = np.array([1., (ep+1)/eps])  # left wheel always full power, right wheel increases power
-        bot.move(a)
-        trajectory[:, ep+1] = bot.agent_position
 
-    plt.plot(trajectory[0], trajectory[1], '-b')
-    plt.plot(trajectory[0], trajectory[1], 'xk')
-    plt.axis('equal')
+
+def plot_path(env, path):
+    '''
+    Plot single path in map.
+    '''
+    m = env._get_current_map()
+    rows, cols = m.shape
+
+    from matplotlib.collections import PatchCollection
+    from matplotlib.patches import Rectangle
+    plt.figure()
+    plt.tight_layout()
+
+    # Plot cells grid
+    plt.xlim(-0.5, cols - 0.5)
+    plt.ylim(-0.5, rows - 0.5)
+    # Grid
+    x_grid = np.arange(rows + 1) - 0.5
+    y_grid = np.arange(cols + 1) - 0.5
+    plt.plot(x_grid, np.stack([y_grid] * x_grid.size), ls='-', c='k', lw=1, alpha=0.8)
+    plt.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-', c='k', lw=1, alpha=0.8)
+    # Start, goal, walls and holes
+    start = env._rc_to_xy(  np.argwhere(m == 'S').T  , rows)
+    goal  = env._rc_to_xy(  np.argwhere(m == 'G').T  , rows)
+    holes = env._rc_to_xy(  np.argwhere(m == 'H').T  , rows)
+    walls = env._rc_to_xy(  np.argwhere(m == 'W').T  , rows)
+    plt.scatter(*start, c='r', marker='o', s=50 )
+    plt.scatter(*goal,  c='r', marker='x', s=50 )
+    plt.scatter(*holes, c='k', marker='v', s=100)
+    plt.gca().add_collection(PatchCollection([Rectangle(xy-0.5, 1, 1) for xy in walls.T], color='navy'))
+    
+    # Plot path
+    # Starting position
+    (start_r,), (start_c,) = np.nonzero(m == 'S')
+    start_pos = env._rc_to_xy([start_r, start_c])
+    # All others
+    path = np.c_[start_pos, path]
+    plt.plot(path[0], path[1], '-b')
+    plt.plot(path[0], path[1], 'xk')
+
     plt.show()
+
+
+
+if __name__ == '__main__':
+    # # See TestBot walking
+    # bot = TestBot()
+    # eps = 100
+    # trajectory = np.zeros((2, eps+1))
+    # trajectory[:, 0] = bot.agent_position
+    # for ep in range(eps):
+    #     a = np.array([1., (ep+1)/eps])  # left wheel always full power, right wheel increases power
+    #     bot.move(a)
+    #     trajectory[:, ep+1] = bot.agent_position
+
+    # plt.plot(trajectory[0], trajectory[1], '-b')
+    # plt.plot(trajectory[0], trajectory[1], 'xk')
+    # plt.axis('equal')
+    # plt.show()
+
+    # See MiniBot collision handling
+    test_map = ["G##.",
+                ".#..",
+                ".#S.",
+                "....",
+                "##.."
+               ]
+    steps_s = [
+            'RRRRRR.......RRR.l...', # slide left
+            'RRRRRR.......RRR.ll..', # slide down
+            'RRRRRR...RRR.r...',     # slide left
+            'RRRRRR...RRR.rr..'      # slide up
+            ]
+    for steps in steps_s:
+        bot = MinibotEnv()
+        bot.all_maps.append(test_map)   # dirty way to add new map
+        bot.__init__()                  #
+        bot.reset(map_idx=3)
+        path = np.zeros((2, len(steps)))
+        for i, step in enumerate(steps):
+            action = np.array([1, 1])
+            if step == 'l':     action = np.array([0, 1])   # left
+            elif step == 'L':   action = np.array([-1, 1])  # sharp left
+            elif step == 'r':   action = np.array([1, 0])   # right
+            elif step == 'R':   action = np.array([1, -1])  # sharp right
+            elif step == 'b':   action = np.array([-1, -1]) # back
+            bot.step(action)
+            path[:, i] = bot.agent_pos
+
+        plot_path(bot, path)
