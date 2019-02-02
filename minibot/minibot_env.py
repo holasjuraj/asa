@@ -142,36 +142,32 @@ class MinibotEnv(Env, Serializable):
         '''
         :param action: power on left & right motor
         '''
-        # # Get next state possibilities
-        # possible_next_states = self._get_possible_next_states(action)
-        # # Sample next state from possibilities
-        # probs = [x[1] for x in possible_next_states]
-        # next_state_idx = np.random.choice(len(probs), p=probs)
-        # next_pos, next_ori = possible_next_states[next_state_idx][0]
-        # # Set new state
-        # self.agent_pos = next_pos
-        # self.agent_ori = next_ori
-        # m = self.get_current_map()
-        # next_r, next_c = next_pos
-        # # Determine reward and termination
-        # next_state_type = m[next_r, next_c]
-        # if next_state_type == 'H':
-        #     done = True
-        #     reward = -1
-        # elif next_state_type in ['F', 'S']:
-        #     done = False
-        #     reward = 0
-        # elif next_state_type == 'G':
-        #     done = True
-        #     reward = 1
-        # else:
-        #     raise NotImplementedError
-        # # Return observation (and others)
-        # obs = self.get_observation()
-        # return Step(observation=obs, reward=reward, done=done,
-        #             pos_xy=self.get_pos_as_xy(), map=self.current_map_idx)
-        #TODO
-        return None
+        if self.discretized:
+            # discretization from {<-1,-0.33> , <-0.33,0.33> , <0.33,1>} to [-1, 0, 1]
+            action = np.clip(np.ronud(action * 1.5), a_min=-1, a_max=1)
+        # Set new state
+        next_pos, next_ori = self._get_new_position(action)
+        self.agent_pos = next_pos
+        self.agent_ori = next_ori
+        # Determine reward and termination
+        m = self._get_current_map()
+        next_state_type = m[next_r, next_c]
+        if next_state_type == 'H':
+            done = True
+            reward = -1
+        elif next_state_type in ['F', 'S']:
+            done = False
+            reward = 0
+        elif next_state_type == 'G':
+            done = True
+            reward = 1
+        else:
+            raise NotImplementedError
+        # Return observation (and others)
+        obs = self.get_observation()
+        return Step(observation=obs, reward=reward, done=done,
+                    agent_pos=self.agent_pos, agent_ori=self.agent_ori,
+                    map=self.current_map_idx)
 
 
     def _get_new_position(self, action):
@@ -180,7 +176,7 @@ class MinibotEnv(Env, Serializable):
         Does not change the agent`s position
         :return: tuple(position, orientation)
         '''
-        m = self.get_current_map()
+        m = self._get_current_map()
         rows, cols = m.shape
         pos0 = self.agent_pos
         ori0 = self.agent_ori
@@ -270,7 +266,7 @@ class MinibotEnv(Env, Serializable):
         '''
         Return type of tile at given X,Y position.
         '''
-        m = self.get_current_map(bitmap)
+        m = self._get_current_map(bitmap)
         rows, cols = m.shape
         x, y = np.round(position)
         r, c = self._xy_to_rc([x, y])
@@ -284,7 +280,7 @@ class MinibotEnv(Env, Serializable):
         Get what agent can see (up to radar_range distance), rotated according
         to agent`s orientation.
         '''
-        # bm = self.get_current_map(bitmap=True)
+        # bm = self._get_current_map(bitmap=True)
         # r, c = self.agent_pos
         # obs = np.copy(
         #         np.rot90(
@@ -297,21 +293,6 @@ class MinibotEnv(Env, Serializable):
         return None
 
 
-    ##DEL
-    # def get_pos_as_xy(self, pos=None, rows=None):
-    #     '''
-    #     Get agent`s position as [X,Y], instead of [row, column].
-    #     :param pos: (r,c) position of agent, or None (current position is used)
-    #     :param rows: number of rows in a map, or None (current map is used)
-    #     '''
-    #     if pos is None:
-    #         pos = self.agent_pos
-    #     r, c = pos
-    #     if rows is None:
-    #         rows, _ = self.get_current_map().shape
-    #     return np.array([c, rows - r - 1])
-
-
     def _rc_to_xy(self, pos, rows=None):
         '''
         Get position as [X,Y], instead of [row, column].
@@ -320,7 +301,7 @@ class MinibotEnv(Env, Serializable):
         '''
         r, c = pos
         if rows is None:
-            rows, _ = self.get_current_map().shape
+            rows, _ = self._get_current_map().shape
         return np.array([c, rows - r - 1])
 
     def _xy_to_rc(self, pos, rows=None):
@@ -331,11 +312,11 @@ class MinibotEnv(Env, Serializable):
         '''
         x, y = pos
         if rows is None:
-            rows, _ = self.get_current_map().shape
+            rows, _ = self._get_current_map().shape
         return np.array([rows - y - 1, x])
 
 
-    def get_current_map(self, bitmap=False):
+    def _get_current_map(self, bitmap=False):
         '''
         Return current map, or bitmap (for observations).
         '''
