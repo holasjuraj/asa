@@ -174,9 +174,9 @@ class MinibotEnv(Env, Serializable):
         return None
 
 
-    def _get_next_state(self, action):
+    def _get_new_position(self, action):
         '''
-        Using current state and given action, return new state considering all world dynamics.
+        Using current state and given action, return new state (position, orientation) considering walls.
         Does not change the agent`s position
         :return: tuple(position, orientation)
         '''
@@ -184,26 +184,46 @@ class MinibotEnv(Env, Serializable):
         rows, cols = m.shape
         pos0 = self.agent_pos
         ori0 = self.agent_ori
-        move, ori_change = self._get_move(action)
-        pos1 = pos0 + move
+        move_vector, ori_change = self._get_raw_move(action)
+        pos1 = pos0 + move_vector
         ori1 = ori0 + ori_change
 
-        tile1_type = self._tile_at_pos(pos1)
-        if tile1_type != 'W':
-            # No collision
+        # Collision detection
+        t0 = np.round(pos0)  # starting tile
+        t1 = np.round(pos1)  # ending tile
+        if self._tile_at_pos(pos1) != 'W':  # no collision (t1=='W' also implies t1 != t0)
             return pos1, ori1
-        # Collision with wall
-        tile_dx, tile_dy = np.round(pos1 - pos0)
-        #TODO: handle collisions
-        # Outline:
-        #   if x is unchanged: apply y-change, x := mean(old_tile_x, new_tile_x)
-        #   the same for y unchanged
-        #   if both changed: ...?
 
+        dtx = t0[0] != t1[0]  # was tile changed in x-direction
+        dty = t0[1] != t1[1]  # was tile changed in y-direction
+        mid_x, mid_y = (t0 + t1) / 2
+        if dtx and not dty:  # bumped into wall E/W
+            pos1[0] = mid_x
+            return pos1, ori1
+        if dty and not dtx:  # bumped into wall N/S
+            pos1[1] = mid_y
+            return pos1, ori1
+
+        # now we know: t1=='W' , dtx , dty ... i.e. we moved diagonally, traversing another tile either on E/W xor on N/S
+        t_ew_wall = self._tile_at_pos((t1[0], t0[1])) == 'W'
+        t_ns_wall = self._tile_at_pos((t0[0], t1[1])) == 'W'
+        if not t_ew_wall  and  not t_ns_wall:
+            t = (mid_x - pos0[0]) / (pos1[0] - pos0[0])
+            y_t = pos0[1] + t * move_vector[1]
+            if y_t < mid_y:  # travelled through empty tile on E/W, bumped into wall on N/S
+                pos1[1] = mid_y
+            else:            # travelled through empty tile on N/S, bumped into wall on E/W
+                pos1[0] = mid_x
+            return pos1, ori1
+        if t_ew_wall:  # bumped into wall on E/W
+            pos1[0] = mid_x
+        if t_ns_wall:  # bumped into wall on N/S
+            pos1[1] = mid_y
+        # combination of last two: bumped into corner
         return pos1, ori1
 
 
-    def _get_move(self, action):
+    def _get_raw_move(self, action):
         '''
         Computes:
         1) a vector: in which direction the agent should move (in world coords)
@@ -234,7 +254,7 @@ class MinibotEnv(Env, Serializable):
 
             move_vector = self._rotation_matrix(self.agent_ori) @ me_pos
             ori_change = alpha
-        return (move_vector, ori_change)
+        return move_vector, ori_chang
 
 
     def _rotation_matrix(self, alpha):
