@@ -98,9 +98,9 @@ if __name__ == '__main__':
             ]
     for steps in steps_s:
         bot = MinibotEnv()
-        bot.all_maps.append(test_map)   # dirty way to add new map
-        bot.__init__()                  #
-        bot.reset(map_idx=3)
+        bot.all_maps = [test_map]   # dirty way to add new map
+        bot.__init__()              #
+        bot.reset()
         path = np.zeros((2, len(steps)))
         for i, step in enumerate(steps):
             action = np.array([1, 1])

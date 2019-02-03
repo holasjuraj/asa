@@ -72,8 +72,8 @@ class MinibotEnv(Env, Serializable):
 
     def __init__(self, radar_range=2, radar_resolution=1, discretized=True, use_maps='all'):
         '''
-        :param radar_range: how far agent sees, Manhattan distance from agent
-        :param radar_resolution: distance between two measurings of agent`s 'radar' (range=6, resolution=2 -> 3 samples in each direction)
+        :param radar_range: how many measurings does 'radar' make, Manhattan distance from agent
+        :param radar_resolution: distance between two measurings of agent`s 'radar'
         :param use_maps: which maps to use, list of indexes or 'all'
         '''
         Serializable.quick_init(self, locals())
@@ -84,7 +84,6 @@ class MinibotEnv(Env, Serializable):
         self.agent_width = 2.4/np.pi
         self.max_action_distance = 0.2
 
-        self.obs_wide = self.radar_range * 2 + 1
         self.current_map_idx = None
         self.agent_pos = None
         self.agent_ori = None
@@ -121,22 +120,39 @@ class MinibotEnv(Env, Serializable):
         '''
         0 = free space, 1 = wall/hole
         '''
-        return Box(low=0, high=1, shape=(self.obs_wide, self.obs_wide), dtype=np.float32)
+        obs_wide = self.radar_range * 2 + 1
+        return Box(low=0, high=1, shape=(obs_wide, obs_wide), dtype=np.float32)
 
 
-    def reset(self, map_idx=None):
+    def get_current_obs(self):
+        '''
+        Get what agent can see (up to radar_range distance), rotated according
+        to agent`s orientation.
+        '''
+        bound = self.radar_range * self.radar_resolution
+        ls = np.linspace(-bound, bound, 2 * self.radar_range + 1)
+        xx, yy = np.meshgrid(ls, ls)
+        points = np.array([xx.flatten(), yy.flatten()])
+        # Transform points from agent`s coordinates to world coordinates
+        r = self._rotation_matrix(self.agent_ori)
+        points = self.agent_pos + r @ points
+        # Fill in observation vector
+        obs = np.zeros(points.shape[1])
+        for i, point in enumerate(points):
+            obs[i] = self._tile_type_at_pos(point, bitmap=True)
+        return obs
+
+
+    def reset(self):
         '''
         Choose random map for this rollout, init agent facing north.
         '''
-        if map_idx:
-            self.current_map_idx = map_idx
-        else:
-            self.current_map_idx = np.random.choice(len(self.maps))
+        self.current_map_idx = np.random.choice(len(self.maps))
         m = self.maps[self.current_map_idx]
         (start_r,), (start_c,) = np.nonzero(m == 'S')
         self.agent_pos = self._rc_to_xy([start_r, start_c])
         self.agent_ori = 0
-        return self.get_observation()
+        return self.get_current_obs()
     
 
     def step(self, action):
@@ -165,7 +181,7 @@ class MinibotEnv(Env, Serializable):
         else:
             raise NotImplementedError
         # Return observation (and others)
-        obs = self.get_observation()
+        obs = self.get_current_obs()
         return Step(observation=obs, reward=reward, done=done,
                     agent_pos=self.agent_pos, agent_ori=self.agent_ori,
                     map=self.current_map_idx)
@@ -225,7 +241,7 @@ class MinibotEnv(Env, Serializable):
     def _get_raw_move(self, action):
         '''
         Computes:
-        1) a vector: in which direction the agent should move (in world coords)
+        1) a vector: in which direction the agent should move (in world coordinates)
         2) orientation change
         Does not handle collisions, nor does it actually changes agent`s position.
         '''
@@ -267,7 +283,7 @@ class MinibotEnv(Env, Serializable):
 
     def _tile_type_at_pos(self, position, bitmap=False):
         '''
-        Return type of tile at given X,Y position.
+        Return type of a tile at given X,Y position.
         '''
         m = self._get_current_map(bitmap)
         rows, cols = m.shape
@@ -276,24 +292,6 @@ class MinibotEnv(Env, Serializable):
         if r < 0 or c < 0 or r >= rows or c >= cols:
             return 1 if bitmap else 'W'
         return m[r, c]
-
-
-    def get_observation(self):
-        '''
-        Get what agent can see (up to radar_range distance), rotated according
-        to agent`s orientation.
-        '''
-        # bm = self._get_current_map(bitmap=True)
-        # r, c = self.agent_pos
-        # obs = np.copy(
-        #         np.rot90(
-        #             bm[r : r+self.obs_wide , c : c+self.obs_wide],
-        #             self.agent_ori
-        #             )
-        #         )
-        # return obs
-        #TODO
-        return None
 
 
     def _rc_to_xy(self, pos, rows=None):
