@@ -24,7 +24,7 @@ class TestBot(MinibotEnv):
 
 
 
-def plot_path(env, path):
+def plot_path(env, path, show=True):
     '''
     Plot single path in map.
     '''
@@ -35,13 +35,14 @@ def plot_path(env, path):
     from matplotlib.patches import Rectangle
     plt.figure()
     plt.tight_layout()
+    plt.axis('equal')
 
     # Plot cells grid
     plt.xlim(-0.5, cols - 0.5)
     plt.ylim(-0.5, rows - 0.5)
     # Grid
-    x_grid = np.arange(rows + 1) - 0.5
-    y_grid = np.arange(cols + 1) - 0.5
+    x_grid = np.arange(cols + 1) - 0.5
+    y_grid = np.arange(rows + 1) - 0.5
     plt.plot(x_grid, np.stack([y_grid] * x_grid.size), ls='-', c='k', lw=1, alpha=0.8)
     plt.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-', c='k', lw=1, alpha=0.8)
     # Start, goal, walls and holes
@@ -63,7 +64,19 @@ def plot_path(env, path):
     plt.plot(path[0], path[1], '-b')
     plt.plot(path[0], path[1], 'xk')
 
-    plt.show()
+    if show:
+        plt.show()
+
+
+def obs_points(bot):
+    bound = bot.radar_range * bot.radar_resolution
+    ls = np.linspace(-bound, bound, 2 * bot.radar_range + 1)
+    xx, yy = np.meshgrid(ls, ls)
+    points = np.array([xx.flatten(), yy.flatten()])
+    # Transform points from agent`s coordinates to world coordinates
+    r = bot._rotation_matrix(bot.agent_ori)
+    points = bot.agent_pos.reshape((2, 1)) + r @ points
+    return points
 
 
 
@@ -92,9 +105,9 @@ if __name__ == '__main__':
                ]
     steps_s = [
             'RRRRRR.......RRR.l...', # slide left
-            'RRRRRR.......RRR.ll..', # slide down
-            'RRRRRR...RRR.r...',     # slide left
-            'RRRRRR...RRR.rr..'      # slide up
+            # 'RRRRRR.......RRR.ll..', # slide down
+            # 'RRRRRR...RRR.r...',     # slide left
+            # 'RRRRRR...RRR.rr..'      # slide up
             ]
     for steps in steps_s:
         bot = MinibotEnv()
@@ -109,7 +122,13 @@ if __name__ == '__main__':
             elif step == 'r':   action = np.array([1, 0])   # right
             elif step == 'R':   action = np.array([1, -1])  # sharp right
             elif step == 'b':   action = np.array([-1, -1]) # back
-            bot.step(action)
+            obs, *_ = bot.step(action)
+            print('Step {:2d}, observation: {}'.format(i, obs))
             path[:, i] = bot.agent_pos
 
-        plot_path(bot, path)
+        plot_path(bot, path, show=False)
+
+        # Plot obs. points
+        points = obs_points(bot)
+        plt.plot(points[0], points[1], '.r')
+        plt.show()

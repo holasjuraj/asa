@@ -108,6 +108,7 @@ class MinibotEnv(Env, Serializable):
             self.bit_maps.append(bm)
 
 
+    @overrides
     @property
     def action_space(self):
         '''
@@ -115,6 +116,7 @@ class MinibotEnv(Env, Serializable):
         '''
         return Box(low=-1, high=1, shape=(2,), dtype=np.float32)
 
+    @overrides
     @property
     def observation_space(self):
         '''
@@ -124,25 +126,61 @@ class MinibotEnv(Env, Serializable):
         return Box(low=0, high=1, shape=(obs_wide, obs_wide), dtype=np.float32)
 
 
+    @overrides
     def get_current_obs(self):
         '''
         Get what agent can see (up to radar_range distance), rotated according
         to agent`s orientation.
         '''
+        return self._get_obs(self.agent_pos, self.agent_ori, self._get_current_map(bitmap=True))
+
+
+    def _get_obs(self, pos, ori, map_):
+        '''
+        Get what agent would see on map_ from position pos (up to radar_range distance), rotated
+        according to orientation ori.
+        '''
         bound = self.radar_range * self.radar_resolution
         ls = np.linspace(-bound, bound, 2 * self.radar_range + 1)
-        xx, yy = np.meshgrid(ls, ls)
+        xx, yy = np.meshgrid(ls, -ls)   # negative ls because we want the observation vector to be ordered front-to-back (row-column style)
         points = np.array([xx.flatten(), yy.flatten()])
         # Transform points from agent`s coordinates to world coordinates
-        r = self._rotation_matrix(self.agent_ori)
-        points = self.agent_pos + r @ points
+        r = self._rotation_matrix(ori)
+        points = pos.reshape((2, 1)) + r @ points
         # Fill in observation vector
         obs = np.zeros(points.shape[1])
-        for i, point in enumerate(points):
-            obs[i] = self._tile_type_at_pos(point, bitmap=True)
+        for i, point in enumerate(points.T):
+            obs[i] = self._tile_type_at_pos(point, bitmap=True, map_=map_)
         return obs
 
 
+    @overrides
+    def reset(self):
+        '''
+        Choose random map for this rollout, init agent facing north.
+        '''
+        self.current_map_idx = np.random.choice(len(self.maps))
+        m = self.maps[self.current_map_idx]
+        (start_r,), (start_c,) = np.nonzero(m == 'S')
+        self.agent_pos = self._rc_to_xy([start_r, start_c])
+        self.agent_ori = 0
+        return self.get_current_obs()
+
+
+    # @overrides
+    def reset_to_state(self, start_obs, **kwargs):
+        '''
+        Choose random map for this rollout, init agent facing north.
+        '''
+        for i in np.random.permutation(len(self.maps)):
+            m = self.maps[i]
+            # TODO
+        self.agent_pos = None
+        self.agent_ori = None
+        return self.get_current_obs()
+
+
+    @overrides
     def reset(self):
         '''
         Choose random map for this rollout, init agent facing north.
@@ -155,6 +193,7 @@ class MinibotEnv(Env, Serializable):
         return self.get_current_obs()
     
 
+    @overrides
     def step(self, action):
         '''
         :param action: power on left & right motor
@@ -281,11 +320,11 @@ class MinibotEnv(Env, Serializable):
         return np.array([[cos, -sin], [sin, cos]])
 
 
-    def _tile_type_at_pos(self, position, bitmap=False):
+    def _tile_type_at_pos(self, position, bitmap=False, map_=None):
         '''
-        Return type of a tile at given X,Y position.
+        Return type of a tile at given X,Y position on a map_, or on current map if map_ is None.
         '''
-        m = self._get_current_map(bitmap)
+        m = map_ if map_ is not None else self._get_current_map(bitmap)
         rows, cols = m.shape
         x, y = np.round(position)
         r, c = self._xy_to_rc([x, y])
