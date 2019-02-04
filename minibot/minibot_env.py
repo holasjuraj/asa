@@ -170,14 +170,42 @@ class MinibotEnv(Env, Serializable):
     # @overrides
     def reset_to_state(self, start_obs, **kwargs):
         '''
-        Choose random map for this rollout, init agent facing north.
+        Choose state that matches given observation.
         '''
-        for i in np.random.permutation(len(self.maps)):
-            m = self.maps[i]
-            # TODO
-        self.agent_pos = None
-        self.agent_ori = None
-        return self.get_current_obs()
+        # This is pretty inefficient implementation. It could serve if method is only rarely,
+        # called, otherwise some serious refactoring should take place.
+        oris = np.arange(4) * np.pi / 2
+        alpha = np.pi / 6
+        oris = np.concatenate([oris, oris + alpha, oris + 2 * alpha])
+        # First round
+        for map_idx in np.random.permutation(len(self.bit_maps)):   # try each map (in random order)
+            m = self.bit_maps[map_idx]
+            rows, cols = m.shape
+            xx, yy = np.meshgrid(np.arange(cols), np.arange(rows))
+            points = np.array([xx.flatten(), yy.flatten()])
+            for o in oris:          # try each orientation
+                for p in points.T:  # try each mid-tile point
+                    if np.all(start_obs == self._get_obs(p, o, m)):
+                        self.agent_pos, self.agent_ori = p, o
+                        self.current_map_idx = map_idx
+                        return start_obs
+        # Second round
+        for map_idx in np.random.permutation(len(self.bit_maps)):   # try each map (in random order)
+            m = self.bit_maps[map_idx]
+            rows, cols = m.shape
+            xx, yy = np.meshgrid(np.arange(cols), np.arange(rows))
+            points = np.array([xx.flatten(), yy.flatten()])
+            deltas = np.array([-0.4, -0.2, 0, 0.2, 0.4])
+            for o in oris:          # try each orientation
+                for p in points.T:  # for each mid-tile point
+                    for dx in deltas:
+                     for dy in deltas:
+                        pp = p + np.array([dx, dy])
+                        if np.all(start_obs == self._get_obs(pp, o, m)):
+                            self.agent_pos, self.agent_ori = pp, o
+                            self.current_map_idx = map_idx
+                            return start_obs
+        raise ValueError('MinibotEnv.reset_to_state: unable to find suitable state for observation:\n{}'.format(start_obs))
 
 
     @overrides
@@ -327,7 +355,7 @@ class MinibotEnv(Env, Serializable):
         m = map_ if map_ is not None else self._get_current_map(bitmap)
         rows, cols = m.shape
         x, y = np.round(position)
-        r, c = self._xy_to_rc([x, y])
+        r, c = self._xy_to_rc([x, y], rows=rows)
         if r < 0 or c < 0 or r >= rows or c >= cols:
             return 1 if bitmap else 'W'
         return m[r, c]

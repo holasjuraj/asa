@@ -1,3 +1,4 @@
+from time import time
 import numpy as np
 import matplotlib
 matplotlib.use('qt5Agg')
@@ -96,39 +97,56 @@ if __name__ == '__main__':
     # plt.axis('equal')
     # plt.show()
 
-    # See MiniBot collision handling
+    # # See MiniBot collision handling
     test_map = ["G##.",
                 ".#..",
                 ".#S.",
                 "....",
                 "##.."
                ]
-    steps_s = [
-            'RRRRRR.......RRR.l...', # slide left
-            # 'RRRRRR.......RRR.ll..', # slide down
-            # 'RRRRRR...RRR.r...',     # slide left
-            # 'RRRRRR...RRR.rr..'      # slide up
-            ]
-    for steps in steps_s:
-        bot = MinibotEnv()
-        bot.all_maps = [test_map]   # dirty way to add new map
-        bot.__init__()              #
-        bot.reset()
-        path = np.zeros((2, len(steps)))
-        for i, step in enumerate(steps):
-            action = np.array([1, 1])
-            if step == 'l':     action = np.array([0, 1])   # left
-            elif step == 'L':   action = np.array([-1, 1])  # sharp left
-            elif step == 'r':   action = np.array([1, 0])   # right
-            elif step == 'R':   action = np.array([1, -1])  # sharp right
-            elif step == 'b':   action = np.array([-1, -1]) # back
-            obs, *_ = bot.step(action)
-            print('Step {:2d}, observation: {}'.format(i, obs))
-            path[:, i] = bot.agent_pos
+    # steps_s = [
+    #         'RRRRRR.......RRR.l...', # slide left
+    #         # 'RRRRRR.......RRR.ll..', # slide down
+    #         # 'RRRRRR...RRR.r...',     # slide left
+    #         # 'RRRRRR...RRR.rr..'      # slide up
+    #         ]
+    # for steps in steps_s:
+    #     bot = MinibotEnv()
+    #     bot.all_maps = [test_map]   # dirty way to add new map
+    #     bot.__init__()              #
+    #     bot.reset()
+    #     path = np.zeros((2, len(steps)))
+    #     for i, step in enumerate(steps):
+    #         action = np.array([1, 1])
+    #         if step == 'l':     action = np.array([0, 1])   # left
+    #         elif step == 'L':   action = np.array([-1, 1])  # sharp left
+    #         elif step == 'r':   action = np.array([1, 0])   # right
+    #         elif step == 'R':   action = np.array([1, -1])  # sharp right
+    #         elif step == 'b':   action = np.array([-1, -1]) # back
+    #         obs, *_ = bot.step(action)
+    #         print('Step {:2d}, observation: {}'.format(i, obs))
+    #         path[:, i] = bot.agent_pos
 
-        plot_path(bot, path, show=False)
+    #     plot_path(bot, path, show=False)
 
-        # Plot obs. points
-        points = obs_points(bot)
-        plt.plot(points[0], points[1], '.r')
-        plt.show()
+    #     # Plot obs. points
+    #     points = obs_points(bot)
+    #     plt.plot(points[0], points[1], '.r')
+    #     plt.show()
+
+    # Test reset_to_state
+    bot = MinibotEnv()
+    bot.all_maps.append(test_map)   # dirty way to add new map
+    bot.__init__()                  #
+    # obs = np.array([1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0])  # 60s
+    # obs = np.array([1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0])  # 2.359s
+    obs = np.array([1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0])  # 5.026s
+    print('reset_to_state started...')
+    t = time()
+    bot.reset_to_state(obs)
+    print('reset_to_state finished after {:.3f}s'.format(time() - t))
+    print(bot.get_current_obs())
+    plot_path(bot, bot.agent_pos, show=False)
+    points = obs_points(bot)
+    plt.plot(points[0], points[1], '.r')
+    plt.show()
