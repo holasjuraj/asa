@@ -11,6 +11,7 @@ from garage.core.serializable import Serializable
 from garage.misc.overrides import overrides
 from garage.misc import logger
 
+_states_cache = {}
 
 class MinibotEnv(Env, Serializable):
     '''
@@ -153,6 +154,20 @@ class MinibotEnv(Env, Serializable):
         self.agent_pos = self._rc_to_xy([start_r, start_c])
         self.agent_ori = 0
         return self.get_current_obs()
+
+
+    # @overrides
+    def reset_to_state(self, start_obs, **kwargs):
+        '''
+        Choose state that matches given observation.
+        '''
+        k = np.array(start_obs, dtype='int8')
+        s = _states_cache[k]
+        m_idx, pos, ori = np.random.choice(list(s))
+        self.current_map_idx = m_idx
+        self.agent_pos = pos
+        self.agent_ori = ori
+        return self.get_current_obs()
     
 
     def step(self, action):
@@ -166,6 +181,7 @@ class MinibotEnv(Env, Serializable):
         next_pos, next_ori = self._get_new_position(action)
         self.agent_pos = next_pos
         self.agent_ori = next_ori
+        obs = self.get_current_obs()
         # Determine reward and termination
         m = self._get_current_map()
         next_state_type = self._tile_type_at_pos(next_pos)
@@ -180,8 +196,15 @@ class MinibotEnv(Env, Serializable):
             reward = 1
         else:
             raise NotImplementedError
-        # Return observation (and others)
-        obs = self.get_current_obs()
+        # Cache observation
+        global _states_cache
+        k = np.array(obs, dtype='int8')
+        v = (self.current_map_idx, self.agent_pos, self.agent_ori)
+        if k not in _states_cache:
+            _states_cache[k] = {v}
+        else:
+            _states_cache[k].add(v)
+        # Return observation and others
         return Step(observation=obs, reward=reward, done=done,
                     agent_pos=self.agent_pos, agent_ori=self.agent_ori,
                     map=self.current_map_idx)
