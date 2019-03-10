@@ -96,6 +96,7 @@ class MinibotEnv(Env, Serializable):
         self.discretized = discretized
         self.agent_width = 2.4/np.pi
         self.max_action_distance = 0.2
+        self.do_render_init = True
 
         self.current_map_idx = None
         self.agent_pos = None
@@ -223,6 +224,45 @@ class MinibotEnv(Env, Serializable):
         return Step(observation=obs, reward=reward, done=done,
                     agent_pos=self.agent_pos, agent_ori=self.agent_ori,
                     map=self.current_map_idx)
+
+
+    def render(self, mode='human'):
+        if self.do_render_init:
+            self.do_render_init = False
+            self.render_prev_pos = self.agent_pos
+            # Initialize plotting
+            ax = plt.gca()
+            plt.cla()
+            # Plot cells grid
+            m = self._get_current_map()
+            rows, cols = m.shape
+            ax.set_xlim(-0.5, cols - 0.5)
+            ax.set_ylim(-0.5, rows - 0.5)
+            # Grid
+            x_grid = np.arange(rows + 1) - 0.5
+            y_grid = np.arange(cols + 1) - 0.5
+            ax.plot(x_grid, np.stack([y_grid] * x_grid.size), ls='-', c='k', lw=1, alpha=0.8)
+            ax.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-', c='k', lw=1, alpha=0.8)
+            # Start, goal, walls and holes
+            start = self._rc_to_xy(  np.argwhere(m == 'S').T  , rows)
+            goal  = self._rc_to_xy(  np.argwhere(m == 'G').T  , rows)
+            holes = self._rc_to_xy(  np.argwhere(m == 'H').T  , rows)
+            walls = self._rc_to_xy(  np.argwhere(m == 'W').T  , rows)            
+            ax.scatter(*start, c='r', marker='o', s=50 )
+            ax.scatter(*goal,  c='r', marker='x', s=50 )
+            ax.scatter(*holes, c='k', marker='v', s=100)
+            ax.add_collection(PatchCollection([Rectangle(xy-0.5, 1, 1) for xy in walls.T], color='navy'))
+        # Plot last move
+        move = np.array([self.render_prev_pos, self.agent_pos]).T
+        plt.plot(*move, '-', c=self.map_colors[self.current_map_idx])
+        self.render_prev_pos = self.agent_pos
+        # Choose output method
+        if mode is 'human':
+            plt.show(block=False)
+        elif mode == 'rgb_array':
+            raise NotImplementedError
+        else:
+            super(MyEnv, self).render(mode=mode) # just raise an exception
 
 
     def _get_new_position(self, action):

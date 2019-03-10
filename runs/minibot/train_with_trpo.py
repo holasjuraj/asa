@@ -9,6 +9,14 @@ from garage.tf.policies import GaussianMLPPolicy # Policy network
 from garage.experiment import run_experiment     # Experiment-running util
 
 
+plot = True
+if plot:
+    # Workaround to create Qt application in main thread
+    import matplotlib
+    matplotlib.use('qt5Agg')
+    import matplotlib.pyplot as plt
+    plt.figure()
+
 def run_task(*_):
 
     env = TfEnv(normalize(MinibotEnv(
@@ -36,6 +44,8 @@ def run_task(*_):
             n_itr=25,
             discount=0.99,
             step_size=0.01,
+            plot=plot,
+            pause_for_plot=plot
             )
     algo.train()
 
