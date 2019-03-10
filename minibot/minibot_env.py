@@ -22,8 +22,8 @@ class MinibotEnv(Env, Serializable):
     degrees in 3 timesteps (if motors are at +100% and -100%).
     Robot always starts facing north (however, agent itself does not have a notion of its orientation).
     
-    Robot is equipped with a 'radar' which scans presence of obstacles within its approximity.
-    Radar output is a sqare bit matrix: presence/absence of obstacle in grid points
+    Robot is equipped with a 'radar' which scans presence of obstacles within its proximity.
+    Radar output is a square bit matrix: presence/absence of obstacle in grid points
     [agent`s X position +- N*radar_resolution ; agent`s Y position +- M*radar_resolution]
     where 0 <= N,M <= radar_range.
 
@@ -40,7 +40,7 @@ class MinibotEnv(Env, Serializable):
     '''
     
     all_maps = [
-        ["........", # min = 11 actions
+        ["........",
          "........",
          "........",
          "........",
@@ -49,7 +49,7 @@ class MinibotEnv(Env, Serializable):
          "...##...",
          "..S##G.."
         ],
-        ["........", # min = 13 actions
+        ["........",
          "........",
          "...##...",
          "...##...",
@@ -58,7 +58,7 @@ class MinibotEnv(Env, Serializable):
          "..S##G..",
          "...##..."
         ],
-        ["........", # min = 21 actions
+        ["........",
          "........",
          "...###..",
          "..S###..",
@@ -73,7 +73,7 @@ class MinibotEnv(Env, Serializable):
 
     def __init__(self, radar_range=2, radar_resolution=1, discretized=True, use_maps='all'):
         '''
-        :param radar_range: how many measurings does 'radar' make, Manhattan distance from agent
+        :param radar_range: how many measurings does 'radar' make to each of 4 sides (and combinations)
         :param radar_resolution: distance between two measurings of agent`s 'radar'
         :param use_maps: which maps to use, list of indexes or 'all'
         '''
@@ -146,7 +146,7 @@ class MinibotEnv(Env, Serializable):
 
     def reset(self):
         '''
-        Choose random map for this rollout, init agent facing north.
+        Choose random map for this rollout, initialize agent facing north.
         '''
         self.current_map_idx = np.random.choice(len(self.maps))
         m = self.maps[self.current_map_idx]
@@ -248,9 +248,9 @@ class MinibotEnv(Env, Serializable):
         if not t_ew_wall  and  not t_ns_wall:
             tx = (mid_x - pos0[0]) / (pos1[0] - pos0[0])
             ty = (mid_y - pos0[1]) / (pos1[1] - pos0[1])
-            if tx < ty:  # travelled through empty tile on E/W, bumped into wall on N/S
+            if tx < ty:  # traveled through empty tile on E/W, bumped into wall on N/S
                 pos1[1] = near_wall_y
-            else:            # travelled through empty tile on N/S, bumped into wall on E/W
+            else:            # traveled through empty tile on N/S, bumped into wall on E/W
                 pos1[0] = near_wall_x
             return pos1, ori1
         if t_ew_wall:  # bumped into wall on E/W
