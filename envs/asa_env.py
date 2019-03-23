@@ -1,7 +1,5 @@
 from abc import ABC
-
 from gym import Env
-from garage.misc.overrides import overrides
 
 
 class AsaEnv(Env, ABC):
@@ -15,8 +13,8 @@ class AsaEnv(Env, ABC):
         """
         raise NotImplementedError
 
-    @overrides
-    def reset(self, start_obs, **kwargs):
+
+    def reset_to_state(self, start_obs, **kwargs):
         """
         Reset the environment, but start in a state that will yield start_obs as initial observation.
         :param start_obs: desired initial observation

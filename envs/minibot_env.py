@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 
-from gym import Env
+from sandbox.asa.envs.asa_env import AsaEnv
 from gym.spaces import Box
 from garage.envs.base import Step
 
@@ -19,7 +19,7 @@ from garage.misc import logger
 _states_cache = {}
 
 
-class MinibotEnv(Env, Serializable):
+class MinibotEnv(AsaEnv, Serializable):
     """
     Simulated two-wheeled robot in an environment with obstacles.
 
@@ -44,7 +44,7 @@ class MinibotEnv(Env, Serializable):
         'H' / 'O': hole (terminates episode)
         'G' : goal
     """
-    
+
     all_maps = [
         ["........",
          "........",
@@ -94,7 +94,8 @@ class MinibotEnv(Env, Serializable):
     ]
     map_colors = ['maroon', 'midnightblue', 'darkgreen', 'darkgoldenrod']
     EPSILON = 0.0001
-    metadata = {'render.modes': ['human', 'rgb_array']}
+    metadata = {'render.modes': ['rgb_array']}
+
 
     # noinspection PyMissingConstructor
     def __init__(self, radar_range=2, radar_resolution=1, discretized=True, use_maps='all'):
@@ -104,22 +105,24 @@ class MinibotEnv(Env, Serializable):
         :param use_maps: which maps to use, list of indexes or 'all'
         """
         Serializable.quick_init(self, locals())
-        
+
         self.radar_range = radar_range
         self.radar_resolution = radar_resolution
         self.discretized = discretized
         self.agent_width = 2.4/np.pi
         self.max_action_distance = 0.2
         self.do_render_init = True
+        self.render_prev_pos = np.zeros(2)
 
         self.current_map_idx = None
         self.agent_pos = None
         self.agent_ori = None
-        
+
         # Maps initialization
         if use_maps == 'all':
             raw_maps = self.all_maps
         else:
+            # noinspection PyTypeChecker
             raw_maps = [self.all_maps[i] for i in use_maps]
         self.maps = []
         self.bit_maps = []
@@ -152,6 +155,7 @@ class MinibotEnv(Env, Serializable):
         return Box(low=0, high=1, shape=(obs_wide, obs_wide), dtype=np.float32)
 
 
+    @overrides
     def get_current_obs(self):
         """
         Get what agent can see (up to radar_range distance), rotated according
@@ -170,6 +174,7 @@ class MinibotEnv(Env, Serializable):
             obs[i] = self._tile_type_at_pos(point, bitmap=True)
         return obs
 
+
     @overrides
     def reset(self):
         """
@@ -184,7 +189,7 @@ class MinibotEnv(Env, Serializable):
         return self.get_current_obs()
 
 
-    # @overrides
+    @overrides
     def reset_to_state(self, start_obs, **kwargs):
         """
         Choose state that matches given observation.
@@ -198,12 +203,13 @@ class MinibotEnv(Env, Serializable):
         self.agent_pos = pos
         self.agent_ori = ori
         return self.get_current_obs()
-    
+
 
     @overrides
     def step(self, action):
         """
         :param action: power on left & right motor
+        :type action: numpy.ndarray
         """
         if self.discretized:
             # discretization from {<-1,-0.33> , <-0.33,0.33> , <0.33,1>} to [-1, 0, 1]
@@ -239,6 +245,7 @@ class MinibotEnv(Env, Serializable):
                     agent_pos=self.agent_pos, agent_ori=self.agent_ori,
                     map=self.current_map_idx)
 
+
     @overrides
     def render(self, mode='rgb_array'):
         if self.do_render_init:
@@ -261,7 +268,7 @@ class MinibotEnv(Env, Serializable):
             start = self._rc_to_xy(  np.argwhere(m == 'S').T  , rows)
             goal  = self._rc_to_xy(  np.argwhere(m == 'G').T  , rows)
             holes = self._rc_to_xy(  np.argwhere(m == 'H').T  , rows)
-            walls = self._rc_to_xy(  np.argwhere(m == 'W').T  , rows)            
+            walls = self._rc_to_xy(  np.argwhere(m == 'W').T  , rows)
             ax.scatter(*start, c='r', marker='o', s=50 )
             ax.scatter(*goal,  c='r', marker='x', s=50 )
             ax.scatter(*holes, c='k', marker='v', s=100)
@@ -288,6 +295,7 @@ class MinibotEnv(Env, Serializable):
             # plt.savefig(os.path.join(dir, 'demo_run.png'))
         else:
             super(MinibotEnv, self).render(mode=mode)  # just raise an exception
+
 
     # noinspection PyMethodMayBeStatic
     def save_rendered_plot(self):
