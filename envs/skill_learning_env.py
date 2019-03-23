@@ -1,11 +1,11 @@
 import numpy as np
 
-from rllab.core.serializable import Serializable
-from rllab.envs.proxy_env import ProxyEnv
-from rllab.misc.overrides import overrides
+from garage.core.serializable import Serializable
+from garage.misc.overrides import overrides
+from gym import Wrapper
 
 
-class SkillLearningEnv(ProxyEnv, Serializable):
+class SkillLearningEnv(Wrapper, Serializable):
     def __init__(
             self,
             env,
@@ -20,7 +20,7 @@ class SkillLearningEnv(ProxyEnv, Serializable):
         :param end_obss: Tensor of experienced ending observations (where skill should terminate)
         """
         Serializable.quick_init(self, locals())
-        ProxyEnv.__init__(self, Serializable.clone(env))
+        Wrapper.__init__(self, Serializable.clone(env))
         if start_obss.shape != end_obss.shape:
             raise ValueError('start_obss ({}) and end_obss ({}) must be of same shape'
                              .format(start_obss.shape, end_obss.shape))
@@ -37,7 +37,7 @@ class SkillLearningEnv(ProxyEnv, Serializable):
 
     @overrides
     def step(self, action):
-        obs, _, term, info = self._wrapped_env.step(action)
+        obs, _, term, info = self.env.step(action)
         # TODO terminate if *any* end_obs is reached, or end_obs belonging to start_obs we started from?
         skill_term = obs in self._end_obss
         surr_reward = 1 if skill_term else 0
@@ -47,4 +47,4 @@ class SkillLearningEnv(ProxyEnv, Serializable):
     @overrides
     def reset(self, **kwargs):
         start_obs = self._start_obss[np.random.randint(self._num_obs), :]
-        return self._wrapped_env.reset(start_obs=start_obs, **kwargs)
+        return self.env.reset(start_obs=start_obs, **kwargs)

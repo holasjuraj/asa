@@ -1,7 +1,6 @@
 import numpy as np
 import time
-from rllab.misc import tensor_utils
-from rllab.envs.normalized_env import NormalizedEnv
+from garage.misc import tensor_utils
 
 
 def skill_rollout(env,
@@ -15,7 +14,7 @@ def skill_rollout(env,
                   ):
     """
     Perform one rollout in given environment.
-    Code by https://github.com/florensacc/snn4hrl
+    Code adopted from https://github.com/florensacc/snn4hrl
     :param env: AsaEnv environment to run in
     :param agent: Policy to sample actions from
     :param max_path_length: force terminate the rollout after this many steps
@@ -33,12 +32,8 @@ def skill_rollout(env,
     terminated = []
     rendered_rgbs = []
     if reset_start_rollout:
-        o = env.reset()  # otherwise it will never advance!!
-    else:
-        if isinstance(env, NormalizedEnv):
-            o = env.wrapped_env.get_current_obs()
-        else:
-            o = env.get_current_obs()
+        env.reset()  # otherwise it will never advance!!
+    o = env.unwrapped.get_current_obs()
     agent.reset()
     path_length = 0
     if animated:
@@ -60,7 +55,7 @@ def skill_rollout(env,
             break
         terminated.append(0)
         # skill decides to terminate
-        if skill_stopping_func(actions, observations):
+        if skill_stopping_func and skill_stopping_func(actions, observations):
             break
 
         o = next_o

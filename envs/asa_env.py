@@ -1,7 +1,7 @@
 from abc import ABC
 
-from rllab.envs.base import Env
-from rllab.misc.overrides import overrides
+from gym import Env
+from garage.misc.overrides import overrides
 
 
 class AsaEnv(Env, ABC):
@@ -20,6 +20,5 @@ class AsaEnv(Env, ABC):
         """
         Reset the environment, but start in a state that will yield start_obs as initial observation.
         :param start_obs: desired initial observation
-        :return:
         """
         raise NotImplementedError
