@@ -1,12 +1,15 @@
-import numpy as np
+import os
+
 import matplotlib
-matplotlib.use('qt5Agg')
+import numpy as np
+
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection
 from matplotlib.patches import Rectangle
 
 from gym import Env
-from gym.spaces import Discrete, Box
+from gym.spaces import Box
 from garage.envs.base import Step
 
 from garage.core.serializable import Serializable
@@ -15,15 +18,16 @@ from garage.misc import logger
 
 _states_cache = {}
 
+
 class MinibotEnv(Env, Serializable):
-    '''
+    """
     Simulated two-wheeled robot in an environment with obstacles.
-    
+
     Robot`s max. travel distance in one timestep is 0.2 (if both motors are set to 100% power).
     Robot`s wheels are on its sides, and robot is 0.764 wide (2.4/pi), i.e. robot can rotate 90
     degrees in 3 timesteps (if motors are at +100% and -100%).
     Robot always starts facing north (however, agent itself does not have a notion of its orientation).
-    
+
     Robot is equipped with a 'radar' which scans presence of obstacles within its proximity.
     Radar output is a square bit matrix: presence/absence of obstacle in grid points
     [agent`s X position +- N*radar_resolution ; agent`s Y position +- M*radar_resolution]
@@ -39,7 +43,7 @@ class MinibotEnv(Env, Serializable):
         'W' / 'x' / '#': wall
         'H' / 'O': hole (terminates episode)
         'G' : goal
-    '''
+    """
     
     all_maps = [
         ["........",
@@ -48,6 +52,15 @@ class MinibotEnv(Env, Serializable):
          "........",
          "...G....",
          "..S##...",
+         "...##...",
+         "...##..."
+        ],
+        ["........",
+         "........",
+         "........",
+         "........",
+         "........",
+         "..S##G..",
          "...##...",
          "...##..."
         ],
@@ -83,12 +96,13 @@ class MinibotEnv(Env, Serializable):
     EPSILON = 0.0001
     metadata = {'render.modes': ['human', 'rgb_array']}
 
+    # noinspection PyMissingConstructor
     def __init__(self, radar_range=2, radar_resolution=1, discretized=True, use_maps='all'):
-        '''
-        :param radar_range: how many measurings does 'radar' make to each of 4 sides (and combinations)
-        :param radar_resolution: distance between two measurings of agent`s 'radar'
+        """
+        :param radar_range: how many measurements does 'radar' make to each of 4 sides (and combinations)
+        :param radar_resolution: distance between two measurements of agent`s 'radar'
         :param use_maps: which maps to use, list of indexes or 'all'
-        '''
+        """
         Serializable.quick_init(self, locals())
         
         self.radar_range = radar_range
@@ -124,25 +138,25 @@ class MinibotEnv(Env, Serializable):
 
     @property
     def action_space(self):
-        '''
+        """
         Power on left/right motor
-        '''
+        """
         return Box(low=-1, high=1, shape=(2,), dtype=np.float32)
 
     @property
     def observation_space(self):
-        '''
+        """
         0 = free space, 1 = wall/hole
-        '''
+        """
         obs_wide = self.radar_range * 2 + 1
         return Box(low=0, high=1, shape=(obs_wide, obs_wide), dtype=np.float32)
 
 
     def get_current_obs(self):
-        '''
+        """
         Get what agent can see (up to radar_range distance), rotated according
         to agent`s orientation.
-        '''
+        """
         bound = self.radar_range * self.radar_resolution
         ls = np.linspace(-bound, bound, 2 * self.radar_range + 1)
         xx, yy = np.meshgrid(ls, ls)
@@ -156,11 +170,11 @@ class MinibotEnv(Env, Serializable):
             obs[i] = self._tile_type_at_pos(point, bitmap=True)
         return obs
 
-
+    @overrides
     def reset(self):
-        '''
+        """
         Choose random map for this rollout, initialize agent facing north.
-        '''
+        """
         self.do_render_init = True
         self.current_map_idx = np.random.choice(len(self.maps))
         m = self.maps[self.current_map_idx]
@@ -172,9 +186,9 @@ class MinibotEnv(Env, Serializable):
 
     # @overrides
     def reset_to_state(self, start_obs, **kwargs):
-        '''
+        """
         Choose state that matches given observation.
-        '''
+        """
         self.do_render_init = True
         k = tuple(np.array(start_obs, dtype='int8'))
         s = _states_cache[k]
@@ -186,10 +200,11 @@ class MinibotEnv(Env, Serializable):
         return self.get_current_obs()
     
 
+    @overrides
     def step(self, action):
-        '''
+        """
         :param action: power on left & right motor
-        '''
+        """
         if self.discretized:
             # discretization from {<-1,-0.33> , <-0.33,0.33> , <0.33,1>} to [-1, 0, 1]
             action = np.clip(np.round(action * 1.5), a_min=-1, a_max=1)
@@ -199,7 +214,6 @@ class MinibotEnv(Env, Serializable):
         self.agent_ori = next_ori
         obs = self.get_current_obs()
         # Determine reward and termination
-        m = self._get_current_map()
         next_state_type = self._tile_type_at_pos(next_pos)
         if next_state_type == 'H':
             done = True
@@ -225,8 +239,8 @@ class MinibotEnv(Env, Serializable):
                     agent_pos=self.agent_pos, agent_ori=self.agent_ori,
                     map=self.current_map_idx)
 
-
-    def render(self, mode='human'):
+    @overrides
+    def render(self, mode='rgb_array'):
         if self.do_render_init:
             self.do_render_init = False
             self.render_prev_pos = self.agent_pos
@@ -254,25 +268,49 @@ class MinibotEnv(Env, Serializable):
             ax.add_collection(PatchCollection([Rectangle(xy-0.5, 1, 1) for xy in walls.T], color='navy'))
         # Plot last move
         move = np.array([self.render_prev_pos, self.agent_pos]).T
+        plt.scatter(*move, marker='.', s=6, c='k')
         plt.plot(*move, '-', c=self.map_colors[self.current_map_idx])
         self.render_prev_pos = self.agent_pos
+
         # Choose output method
-        if mode is 'human':
-            plt.show(block=False)
-        elif mode == 'rgb_array':
+        mode = 'rgb-array'
+        if mode == 'human':
+            # plt.show(block=False)
             raise NotImplementedError
+        elif mode == 'rgb-array':
+            pass
+            # dir = logger.get_snapshot_dir()
+            # if dir is None:
+            #     dir = '~/garage/data/local/asa/instant-run';
+            # dir = os.path.expanduser(dir)
+            # if not os.path.isdir(dir):
+            #     os.makedirs(dir)
+            # plt.savefig(os.path.join(dir, 'demo_run.png'))
         else:
-            super(MyEnv, self).render(mode=mode) # just raise an exception
+            super(MinibotEnv, self).render(mode=mode)  # just raise an exception
+
+    # noinspection PyMethodMayBeStatic
+    def save_rendered_plot(self):
+        directory = logger.get_snapshot_dir()
+        if directory is None:
+            directory = '~/garage/data/local/asa/instant-run'
+        directory = os.path.expanduser(directory)
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
+        base = 'demo_run_'
+        try:
+            i = 1 + max([int(f[len(base):f.find('.')]) for f in os.listdir(directory) if f.startswith(base)])
+        except ValueError:
+            i = 0
+        plt.savefig(os.path.join(directory, '{}{}.png'.format(base, i)))
 
 
     def _get_new_position(self, action):
-        '''
+        """
         Using current state and given action, return new state (position, orientation) considering walls.
         Does not change the agent`s position
         :return: tuple(position, orientation)
-        '''
-        m = self._get_current_map()
-        rows, cols = m.shape
+        """
         pos0 = self.agent_pos
         ori0 = self.agent_ori
         move_vector, ori_change = self._get_raw_move(action)
@@ -297,7 +335,7 @@ class MinibotEnv(Env, Serializable):
             pos1[1] = near_wall_y
             return pos1, ori1
 
-        # now we know: t1=='W' , dtx , dty ... i.e. we moved diagonally, traversing another tile either on E/W xor on N/S
+        # now we know: t1=='W', dtx, dty ... i.e. we moved diagonally, traversing another tile either on E/W xor on N/S
         t_ew_wall = self._tile_type_at_pos((t1[0], t0[1])) == 'W'
         t_ns_wall = self._tile_type_at_pos((t0[0], t1[1])) == 'W'
         if not t_ew_wall  and  not t_ns_wall:
@@ -317,12 +355,12 @@ class MinibotEnv(Env, Serializable):
 
 
     def _get_raw_move(self, action):
-        '''
+        """
         Computes:
         1) a vector: in which direction the agent should move (in world coordinates)
         2) orientation change
         Does not handle collisions, nor does it actually changes agent`s position.
-        '''
+        """
         al, ar = action * self.max_action_distance  # scale motor power <-1,1> to actual distance <-0.2,0.2>
         w = self.agent_width
 
@@ -350,19 +388,20 @@ class MinibotEnv(Env, Serializable):
         return absolute_move_vector, ori_change
 
 
-    def _rotation_matrix(self, alpha):
-        '''
+    @staticmethod
+    def _rotation_matrix(alpha):
+        """
         2-D rotation matrix for column-vectors (i.e. usage: x' = R @ x).
-        '''
+        """
         sin = np.sin(alpha)
         cos = np.cos(alpha)
         return np.array([[cos, -sin], [sin, cos]])
 
 
     def _tile_type_at_pos(self, position, bitmap=False):
-        '''
+        """
         Return type of a tile at given X,Y position.
-        '''
+        """
         m = self._get_current_map(bitmap)
         rows, cols = m.shape
         x, y = np.round(position)
@@ -373,22 +412,22 @@ class MinibotEnv(Env, Serializable):
 
 
     def _rc_to_xy(self, pos, rows=None):
-        '''
+        """
         Get position as [X,Y], instead of [row, column].
         :param pos: (r,c) position
         :param rows: number of rows in a map, or None (current map is used)
-        '''
+        """
         r, c = pos
         if rows is None:
             rows, _ = self._get_current_map().shape
         return np.array([c, rows - r - 1])
 
     def _xy_to_rc(self, pos, rows=None):
-        '''
+        """
         Get position as [row, column], instead of [X,Y]. Original [X,Y] position will be rounded to nearest tile.
         :param pos: (x,y) position
         :param rows: number of rows in a map, or None (current map is used)
-        '''
+        """
         x, y = np.round(pos)
         if rows is None:
             rows, _ = self._get_current_map().shape
@@ -396,9 +435,9 @@ class MinibotEnv(Env, Serializable):
 
 
     def _get_current_map(self, bitmap=False):
-        '''
+        """
         Return current map, or bitmap (for observations).
-        '''
+        """
         if bitmap:
             return self.bit_maps[self.current_map_idx]
         return self.maps[self.current_map_idx]
