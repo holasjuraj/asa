@@ -4,7 +4,7 @@ from garage.core.serializable import Serializable
 from garage.misc.overrides import overrides
 from garage.misc import logger
 from sandbox.asa.envs.skill_learning_env import SkillLearningEnv
-from sandbox.asa.utils.path_trie import PathTrie
+from sandbox.asa.utils import PathTrie
 
 
 class AdaptiveSkillAcquisition(BatchPolopt):

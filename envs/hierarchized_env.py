@@ -5,7 +5,7 @@ from garage.misc.overrides import overrides
 from gym import Wrapper
 from garage.envs.base import Step
 from gym.spaces import Discrete
-from sandbox.asa.sampler.utils import skill_rollout
+from sandbox.asa.sampler import skill_rollout
 
 
 class HierarchizedEnv(Wrapper, Serializable):
