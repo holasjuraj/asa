@@ -45,3 +45,7 @@ class HierarchizedEnv(Wrapper, Serializable):
         reward = np.sum(skill_path['rewards'])
         term = skill_path['terminated'][-1]
         return Step(next_obs, reward, term)
+
+    @overrides
+    def reset(self, **kwargs):
+        return self.env.reset(**kwargs)

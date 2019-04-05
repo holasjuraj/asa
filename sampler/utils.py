@@ -55,7 +55,14 @@ def skill_rollout(env,
             break
         terminated.append(0)
         # skill decides to terminate
-        if skill_stopping_func and skill_stopping_func(actions, observations):
+        path_dict = dict(
+            observations=tensor_utils.stack_tensor_list(observations),
+            actions=tensor_utils.stack_tensor_list(actions),
+            rewards=tensor_utils.stack_tensor_list(rewards),
+            agent_infos=tensor_utils.stack_tensor_dict_list(agent_infos),
+            env_infos=tensor_utils.stack_tensor_dict_list(env_infos),  # here it concatenates all lower-level paths!
+        )
+        if skill_stopping_func and skill_stopping_func(path_dict):
             break
 
         o = next_o

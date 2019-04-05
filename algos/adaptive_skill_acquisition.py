@@ -2,7 +2,7 @@ from garage.algos.batch_polopt import BatchPolopt
 # TODO for TF use: garage.tf.algos.batch_polopt
 from garage.core.serializable import Serializable
 from garage.misc.overrides import overrides
-import garage.misc.logger
+from garage.misc import logger
 from sandbox.asa.envs.skill_learning_env import SkillLearningEnv
 from sandbox.asa.utils.path_trie import PathTrie
 
@@ -14,7 +14,6 @@ class AdaptiveSkillAcquisition(BatchPolopt):
                  hrl_policy,
                  baseline,
                  top_algo_cls,
-                 top_algo_kwargs,
                  low_algo_cls,
                  low_algo_kwargs,
                  **kwargs):
@@ -28,21 +27,22 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         :param baseline: baseline
         :param top_algo_cls: class of RL algorithm for training top-level agent. Must inherit BatchPolopt (only
                              init_opt(), optimize_policy(), and get_itr_snapshot() will be used).
-        :param top_algo_kwargs: additional kwargs for top-level algorithm (don`t have to provide env, policy, baseline)
         :param low_algo_cls: class of RL algorithm for training low-level agents - each new skill.
         :param low_algo_kwargs: additional kwargs for low-level algorithm (don`t have to provide env, policy, baseline)
         """
+        # We must init _top_algo before super().__init__, because super().__init__ calls init_opt(),
+        # which calls _top_algo.init_opt().
         self._top_algo = top_algo_cls(env,
                                       hrl_policy.get_top_policy(),
                                       baseline,
-                                      **top_algo_kwargs)
+                                      **kwargs)
         super().__init__(env,
                          hrl_policy.get_top_policy(),
                          baseline,
                          **kwargs)
         self.sampler = self._top_algo.sampler
         self._low_algo_cls = low_algo_cls
-        self._low_algo_kwargs = low_algo_kwargs
+        self._low_algo_kwargs = low_algo_kwargs if low_algo_kwargs is not None else dict()
         self._hrl_policy = hrl_policy
         # TODO assertion for types
 
@@ -120,7 +120,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         """
         Create and train a new skill based on given start and end observations
         """
-        new_skill_pol = self._hrl_policy.create_new_skill(end_obss)  # blank policy to be trained
+        new_skill_pol, new_skill_id = self._hrl_policy.create_new_skill(end_obss)  # blank policy to be trained
 
         learning_env = SkillLearningEnv(env=self.env.env,  # environment wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
                                         start_obss=start_obss,
@@ -135,7 +135,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
 
         algo = self._low_algo_cls(env=learning_env,
                                   policy=new_skill_pol,
-                                  **self._low_algo_kwargs)
+                                  **self.la_kwargs)
 
-        with logger.prefix('Skill {} | '.format(self._hrl_policy.num_skills - 1)):
+        with logger.prefix('Skill {} | '.format(new_skill_id)):
             algo.train()
