@@ -1,9 +1,8 @@
-from garage.algos.batch_polopt import BatchPolopt
-# TODO for TF use: garage.tf.algos.batch_polopt
-from garage.core.serializable import Serializable
+from garage.tf.algos import BatchPolopt
+from garage.core import Serializable
 from garage.misc.overrides import overrides
 from garage.misc import logger
-from sandbox.asa.envs.skill_learning_env import SkillLearningEnv
+from sandbox.asa.envs import SkillLearningEnv
 from sandbox.asa.utils import PathTrie
 
 
@@ -32,13 +31,13 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         """
         # We must init _top_algo before super().__init__, because super().__init__ calls init_opt(),
         # which calls _top_algo.init_opt().
-        self._top_algo = top_algo_cls(env,
-                                      hrl_policy.get_top_policy(),
-                                      baseline,
+        self._top_algo = top_algo_cls(env=env,
+                                      policy=hrl_policy.get_top_policy(),
+                                      baseline=baseline,
                                       **kwargs)
-        super().__init__(env,
-                         hrl_policy.get_top_policy(),
-                         baseline,
+        super().__init__(env=env,
+                         policy=hrl_policy.get_top_policy(),
+                         baseline=baseline,
                          **kwargs)
         self.sampler = self._top_algo.sampler
         self._low_algo_cls = low_algo_cls
@@ -135,7 +134,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
 
         algo = self._low_algo_cls(env=learning_env,
                                   policy=new_skill_pol,
-                                  **self.la_kwargs)
+                                  **la_kwargs)
 
         with logger.prefix('Skill {} | '.format(new_skill_id)):
             algo.train()

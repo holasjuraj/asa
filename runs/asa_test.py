@@ -8,8 +8,8 @@ from sandbox.asa.policies import HierarchicalPolicy
 from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
-from garage.baselines import LinearFeatureBaseline   # Baseline for Advantage function { A(s) = V(s) - B(s) }
-from sandbox.asa.envs.minibot_env import MinibotEnv  # Environment
+from garage.tf.baselines import GaussianMLPBaseline  # Baseline for Advantage function { A(s, a) = Q(s, a) - B(s) }
+from sandbox.asa.envs import MinibotEnv              # Environment
 from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
@@ -35,22 +35,26 @@ def run_task(*_):
                         discretized=True
     )))
 
-    # Policies
-    top_policy = CategoricalMLPPolicy(
-        env_spec=base_env.spec,  # TODO! should be hrl_env
-        hidden_sizes=(32, 32)
-    )
+    # Skill policies
     trained_skill_policies = [
         MinibotForwardPolicy(env_spec=base_env.spec),
         MinibotLeftPolicy(env_spec=base_env.spec)
     ]
     trained_skill_policies_stop_funcs = [
-        lambda path: len(path['actions']) > 5,  # 5 steps to move 1 tile
-        lambda path: len(path['actions']) > 3   # 3 steps to rotate 90°
+        lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
+        lambda path: len(path['actions']) >= 3   # 3 steps to rotate 90°
     ]
     skill_policy_prototype = GaussianMLPPolicy(
         env_spec=base_env.spec,
         hidden_sizes=(64, 64)
+    )
+    # Top policy
+    top_policy = CategoricalMLPPolicy(
+        env_spec=HierarchizedEnv.create_hrl_env_spec(
+            base_env=base_env,
+            num_skills=len(trained_skill_policies)
+        ),
+        hidden_sizes=(32, 32)
     )
 
     # Hierarchy of policies
@@ -70,7 +74,7 @@ def run_task(*_):
     )
 
     # Baseline
-    baseline = LinearFeatureBaseline(env_spec=env.spec)
+    baseline = GaussianMLPBaseline(env_spec=hrl_env.spec)
 
     # Main ASA algorithm
     asa_algo = AdaptiveSkillAcquisition(

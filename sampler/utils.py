@@ -1,5 +1,7 @@
 import numpy as np
 import time
+
+from garage.envs.normalized_env import NormalizedEnv
 from garage.misc import tensor_utils
 
 
@@ -32,8 +34,14 @@ def skill_rollout(env,
     terminated = []
     rendered_rgbs = []
     if reset_start_rollout:
-        env.reset()  # otherwise it will never advance!!
-    o = env.unwrapped.get_current_obs()
+        o = env.reset()
+    else:
+        # TODO? should this be active?
+        # if isinstance(env, NormalizedEnv):
+        #     o = env.env.get_current_obs()
+        # else:
+        #     o = env.get_current_obs()
+        o = env.get_current_obs()
     agent.reset()
     path_length = 0
     if animated:
