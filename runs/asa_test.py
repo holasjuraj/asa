@@ -27,13 +27,13 @@ plot = True
 
 def run_task(*_):
 
-    # Base (original) environment
-    base_env = TfEnv(
-                normalize(
-                    MinibotEnv(
-                        use_maps=[0, 1],  # 'all',  # [0,1]
-                        discretized=True
-    )))
+    # Base (original) environment. Don't TfEnv() it yet!
+    base_env = normalize(
+                MinibotEnv(
+                    use_maps=[0, 1],  # 'all',  # [0,1]
+                    discretized=True
+                )
+    )
 
     # Skill policies
     trained_skill_policies = [
@@ -68,9 +68,11 @@ def run_task(*_):
     )
 
     # Hierarchized environment
-    hrl_env = HierarchizedEnv(
-            env=base_env,
-            hrl_policy=hrl_policy
+    hrl_env = TfEnv(
+                HierarchizedEnv(
+                    env=base_env,
+                    hrl_policy=hrl_policy
+                )
     )
 
     # Baseline
@@ -88,6 +90,7 @@ def run_task(*_):
                 max_path_length=100,
                 n_itr=15,
                 discount=0.99,
+                force_batch_sampler=True,
             low_algo_kwargs={
                 'batch_size': 1000,
                 'max_path_length': 30,

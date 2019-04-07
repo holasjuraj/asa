@@ -5,7 +5,7 @@ from garage.misc.overrides import overrides
 from gym import Wrapper
 from garage.envs.base import Step
 from garage.envs import EnvSpec
-from garage.tf.spaces import Discrete
+from gym.spaces import Discrete
 from sandbox.asa.sampler import skill_rollout
 
 
@@ -32,7 +32,7 @@ class HierarchizedEnv(Wrapper, Serializable):
 
     @overrides
     def step(self, action):
-        skill_path = skill_rollout(env=self.env,
+        skill_path = skill_rollout(env=self.env,  # TODO? Maybe TfEnv(self.base_env) will be needed.
                                    agent=self.hrl_policy.get_skill_policy(action),
                                    skill_stopping_func=self.hrl_policy.get_skill_stopping_func(action),
                                    max_path_length=self.hrl_policy.skill_max_timesteps,

@@ -1,4 +1,5 @@
 from garage.tf.algos import BatchPolopt
+from garage.tf.envs import TfEnv
 from garage.core import Serializable
 from garage.misc.overrides import overrides
 from garage.misc import logger
@@ -121,9 +122,14 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         """
         new_skill_pol, new_skill_id = self._hrl_policy.create_new_skill(end_obss)  # blank policy to be trained
 
-        learning_env = SkillLearningEnv(env=self.env.env,  # environment wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
-                                        start_obss=start_obss,
-                                        end_obss=end_obss)
+        learning_env = TfEnv(
+                        SkillLearningEnv(
+                            # environment wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
+                            env=self.env.env,
+                            start_obss=start_obss,
+                            end_obss=end_obss
+                        )
+        )
 
         la_kwargs = dict(self._low_algo_kwargs)
         # We need to clone baselline, as each skill policy must have its own instance
