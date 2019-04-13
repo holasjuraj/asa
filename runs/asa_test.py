@@ -27,15 +27,17 @@ plot = True
 
 def run_task(*_):
 
-    # Base (original) environment. Don't TfEnv() it yet!
+    ## Lower level environment & policies
+    # Base (original) environment.
     base_env = normalize(
                 MinibotEnv(
                     use_maps=[0, 1],  # 'all',  # [0,1]
                     discretized=True
                 )
     )
+    tf_base_env = TfEnv(base_env)
 
-    # Skill policies
+    # Skill policies, operating in base environment
     trained_skill_policies = [
         MinibotForwardPolicy(env_spec=base_env.spec),
         MinibotLeftPolicy(env_spec=base_env.spec)
@@ -45,42 +47,42 @@ def run_task(*_):
         lambda path: len(path['actions']) >= 3   # 3 steps to rotate 90°
     ]
     skill_policy_prototype = GaussianMLPPolicy(
-        env_spec=base_env.spec,
-        hidden_sizes=(64, 64)
+            env_spec=tf_base_env.spec,
+            hidden_sizes=(64, 64)
     )
+
+    ## Upper level environment & policies
+    # Hierarchized environment
+    hrl_env = HierarchizedEnv(
+            env=base_env,
+            num_orig_skills=len(trained_skill_policies)
+    )
+    tf_hrl_env = TfEnv(hrl_env)
+
     # Top policy
     top_policy = CategoricalMLPPolicy(
-        env_spec=HierarchizedEnv.create_hrl_env_spec(
-            base_env=base_env,
-            num_skills=len(trained_skill_policies)
-        ),
-        hidden_sizes=(32, 32)
+            env_spec=tf_hrl_env.spec,
+            hidden_sizes=(32, 32)
     )
 
     # Hierarchy of policies
     hrl_policy = HierarchicalPolicy(
-        env_spec=base_env.spec,
-        top_policy=top_policy,
-        skill_policy_prototype=skill_policy_prototype,
-        skill_policies=trained_skill_policies,
-        skill_stop_functions=trained_skill_policies_stop_funcs,
-        skill_max_timesteps=20
+            top_policy=top_policy,
+            skill_policy_prototype=skill_policy_prototype,
+            skill_policies=trained_skill_policies,
+            skill_stop_functions=trained_skill_policies_stop_funcs,
+            skill_max_timesteps=20
     )
+    # Link hrl_policy and hrl_env, so that hrl_env can use skills
+    hrl_env.set_hrl_policy(hrl_policy)
 
-    # Hierarchized environment
-    hrl_env = TfEnv(
-                HierarchizedEnv(
-                    env=base_env,
-                    hrl_policy=hrl_policy
-                )
-    )
-
+    ## Other
     # Baseline
-    baseline = GaussianMLPBaseline(env_spec=hrl_env.spec)
+    baseline = GaussianMLPBaseline(env_spec=tf_hrl_env.spec)
 
     # Main ASA algorithm
     asa_algo = AdaptiveSkillAcquisition(
-            env=hrl_env,
+            env=tf_hrl_env,
             hrl_policy=hrl_policy,
             baseline=baseline,
             top_algo_cls=TRPO,
@@ -99,6 +101,7 @@ def run_task(*_):
             }
     )
 
+    ## Launch training
     # Configure TF session
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True

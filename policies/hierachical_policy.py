@@ -12,7 +12,6 @@ class HierarchicalPolicy(Serializable):
     # noinspection PyMissingConstructor
     def __init__(
             self,
-            env_spec,
             top_policy,
             skill_policy_prototype,
             skill_policies,
@@ -20,7 +19,6 @@ class HierarchicalPolicy(Serializable):
             skill_max_timesteps=100
     ):
         """
-        :param env_spec: environment specification - observation and action spaces
         :param top_policy: policy for top-level agent, to be trained
         :param skill_policies: list of trained skill policies
         :param skill_policy_prototype: an empty policy serving as a prototype for newly created skill policies. New
@@ -30,7 +28,6 @@ class HierarchicalPolicy(Serializable):
         :param skill_max_timesteps: maximum length of skill execution
         """
         Serializable.quick_init(self, locals())
-        self._env_spec = env_spec
         self._top_policy = top_policy
         self._skill_policy_prototype = skill_policy_prototype
         self._skill_policies = skill_policies
@@ -38,9 +35,9 @@ class HierarchicalPolicy(Serializable):
         self.skill_max_timesteps = skill_max_timesteps
 
         # pad _skills_end_obss to align indexes with skill_policies
-        self._skills_end_obss = [np.zeros((0, env_spec.observation_space.flat_dim))
-                                 for _ in range(self._num_orig_skills)]
+        self._skills_end_obss = [None for _ in range(self._num_orig_skills)]
 
+        # if _skill_stop_functions is not provided, default stopping function (return False) is assigned to all
         self._skill_stop_functions = skill_stop_functions if skill_stop_functions is not None \
                                      else [lambda path: False for _ in range(self._num_orig_skills)]
         assert(len(self._skill_stop_functions) == self._num_orig_skills)
