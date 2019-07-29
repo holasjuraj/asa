@@ -75,8 +75,8 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         # TODO extract Trie parameters
         min_length = 3
         max_length = 10
-        action_map = {0: 'L', 1: 's'}
-        min_f_score = 20
+        action_map = {0: 's', 1: 'L'}
+        min_f_score = 2
         max_results = 10
         aggregations = ['mean']  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
 
@@ -113,6 +113,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         # Hence Trie parameters should be max_results = 1, min_f_score = <some reasonably high number, e.g. 20>
         if len(frequent_paths) == 0:
             return False, None, None
+        return False, None, None  # TODO delete me (debug)
         top_subpath = frequent_paths[0]
         return True, top_subpath.start_observations, top_subpath.end_observations
 
@@ -124,7 +125,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
 
         learning_env = TfEnv(
                         SkillLearningEnv(
-                            # environment wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
+                            # base env that was wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
                             env=self.env.env,
                             start_obss=start_obss,
                             end_obss=end_obss
@@ -132,11 +133,10 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         )
 
         la_kwargs = dict(self._low_algo_kwargs)
-        # We need to clone baselline, as each skill policy must have its own instance
+        # We need to clone baseline, as each skill policy must have its own instance
         baseline_to_clone = la_kwargs.get('baseline', self.baseline)
-        if baseline_to_clone:
-            baseline = Serializable.clone(baseline_to_clone)    # to create blank baseline
-            la_kwargs['baseline'] = baseline
+        baseline = Serializable.clone(baseline_to_clone)    # to create blank baseline
+        la_kwargs['baseline'] = baseline
 
         algo = self._low_algo_cls(env=learning_env,
                                   policy=new_skill_pol,
