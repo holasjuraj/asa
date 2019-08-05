@@ -88,9 +88,9 @@ def run_task(*_):
             top_algo_cls=TRPO,
             low_algo_cls=TRPO,
             # Top algo kwargs
-                batch_size=1000,
+                batch_size=5000,
                 max_path_length=100,
-                n_itr=15,
+                n_itr=25,
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={

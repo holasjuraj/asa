@@ -26,7 +26,7 @@ class Node:
     def end_observations(self):
         return np.array(self._end_obss)
 
-    def add_count(self, start_obs=None, end_obs=None):
+    def add_count(self, start_obs, end_obs):
         """
         Add to the counter of this path, store observations.
         Observations are stored only if both start and end obs. is provided.
@@ -34,9 +34,10 @@ class Node:
         :param end_obs: observation after last action of this path
         """
         self._counter += 1
-        if (start_obs is not None) and (end_obs is not None):
-            self._start_obss.append(start_obs)
-            self._end_obss.append(end_obs)
+        assert start_obs is not None
+        assert end_obs is not None
+        self._start_obss.append(start_obs)
+        self._end_obss.append(end_obs)
 
     def __getitem__(self, action):
         if not self.has_children:
@@ -85,13 +86,13 @@ class PathTrie:
         # TODO assert actions 1D shape (after conversion to np array)
         self.num_eps += 1
         self.num_steps += len(actions)
-        # TODO pass the last observation as well, then change actions and observations to numpy arrays
-        # Changes in callers of this function, in add(), get_starts(), get_ends(), Node.add_count(), maybe others
+        # TODO {pass the last observation as well | Re: no, rather ignore last action. Done.},
+        #   then change actions and observations to numpy arrays
+        #   Changes in callers of this function, in add(), get_starts(), get_ends(), Node.add_count(), maybe others
         if type(observations) == np.ndarray:
             observations = observations.tolist()
-        observations.append(None)   # "missing" observation after last action
 
-        for end in range(1, len(actions) + 1):
+        for end in range(1, len(actions)):  # last action is ignored, because there is no observation ofter it
             start = max(0, end - max_length)
             if end-start < min_length:
                 continue

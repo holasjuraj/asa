@@ -94,7 +94,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
 
         frequent_paths = path_trie.items(
             action_map=action_map,
-            min_count=len(paths) * 2,   # TODO? what about this?
+            min_count=10,  # len(paths) * 2,   # TODO? what about this?
             min_f_score=min_f_score,
             max_results=max_results,
             aggregations=aggregations
