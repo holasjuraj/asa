@@ -31,7 +31,7 @@ def run_task(*_):
     # Base (original) environment.
     base_env = normalize(
                 MinibotEnv(
-                    use_maps=[0, 1],  # 'all',  # [0,1]
+                    use_maps='all',  # [0, 1, 2, 3],  # 'all',  # [0,1]
                     discretized=True
                 )
     )
@@ -103,9 +103,12 @@ def run_task(*_):
 
     ## Launch training
     # Configure TF session
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    with tf.Session(config=config) as session:
+    # config = tf.ConfigProto()
+    # config.gpu_options.allow_growth = True
+    # with tf.Session(config=config) as session:
+    with tf.Session() as session:
+        from garage.sampler import singleton_pool
+        singleton_pool.initialize(n_parallel=20)
         # Train HRL agent
         asa_algo.train(sess=session)
 
