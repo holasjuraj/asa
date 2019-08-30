@@ -13,7 +13,7 @@ from sandbox.asa.envs import MinibotEnv              # Environment
 from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
-# from garage.misc.instrument import run_experiment    # Experiment-running util
+from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
 plot = True
@@ -110,20 +110,26 @@ def run_task(*_):
         asa_algo.train(sess=session)
 
 
-# Run directly
-run_task()
+## Run directly
+# run_task()
 
-# # Run pickled
-# for seed in range(1, 6):
-#     run_experiment(
-#         run_task,
-#         exp_prefix='asa-test',
-#         exp_name='{}'.format(seed),
-#         # Number of parallel workers for sampling
-#         n_parallel=2,
-#         # Only keep the snapshot parameters for the last iteration
-#         snapshot_mode="last",
-#         # Specifies the seed for the experiment. If this is not provided, a random seed will be used
-#         seed=seed,
-#     #     plot=True
-#     )
+## Run pickled
+# Erase snapshots from previous instant run
+import shutil
+shutil.rmtree('/home/h/holas3/garage/data/local/asa-test/instant-run', ignore_errors=False)
+# Run experiment
+seed = 1
+run_experiment(
+    run_task,
+    use_tf=True,
+    use_gpu=True,
+    exp_prefix='asa-test',
+    exp_name='instant-run',
+    # Number of parallel workers for sampling
+    n_parallel=0,
+    # Snapshot information
+    snapshot_mode="all",
+    # Specifies the seed for the experiment. If this is not provided, a random seed will be used
+    seed=seed,
+    # plot=True
+)
