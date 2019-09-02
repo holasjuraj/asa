@@ -27,6 +27,7 @@ class HierarchizedEnv(Wrapper, Serializable):
         super().__init__(env)
         self._num_orig_skills = num_orig_skills
         self.action_space = Discrete(self._num_orig_skills)
+        # TODO! action_space must change after adding new skill
         self.hrl_policy = None
 
 

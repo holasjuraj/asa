@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import tensorflow as tf
+import joblib
 
 from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
@@ -13,38 +14,31 @@ from sandbox.asa.envs import MinibotEnv              # Environment
 from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
+from garage.tf.core.network import MLP               # MLP for new top policy
 from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
-plot = True
-# if plot:
-#     # Workaround to create Qt application in main thread
-#     import matplotlib
-#     matplotlib.use('qt5Agg')
-#     import matplotlib.pyplot as plt
-#     plt.figure()
-
-
 def run_task(*_):
+    ## Load data from itr_N.pkl
+    pkl_file = 'data/local/asa-test/instant-run/itr_11.pkl'
+    with tf.Session().as_default():
+        saved_data = joblib.load(pkl_file)
 
     ## Lower level environment & policies
     # Base (original) environment.
-    base_env = normalize(
-                MinibotEnv(
-                    use_maps=[0, 1],  # 'all',  # [0,1]
-                    discretized=True
-                )
-    )
+    base_env = saved_data['env'].env.env
     tf_base_env = TfEnv(base_env)
 
     # Skill policies, operating in base environment
     trained_skill_policies = [
         MinibotForwardPolicy(env_spec=base_env.spec),
-        MinibotLeftPolicy(env_spec=base_env.spec)
+        MinibotLeftPolicy(env_spec=base_env.spec),
+        # TODO! new skill policy
     ]
     trained_skill_policies_stop_funcs = [
         lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
-        lambda path: len(path['actions']) >= 3   # 3 steps to rotate 90°
+        lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
+        # TODO! new skill stopping function
     ]
     skill_policy_prototype = GaussianMLPPolicy(
             env_spec=tf_base_env.spec,
@@ -59,20 +53,38 @@ def run_task(*_):
     )
     tf_hrl_env = TfEnv(hrl_env)
 
-    # Top policy
-    top_policy = CategoricalMLPPolicy(
+    ## Top policy
+    # Get old policy from saved data
+    old_top_policy = saved_data['policy']
+
+    # TODO Get W matrix from old_policy
+
+    # TODO Create new MLP using W matrix
+    new_prob_network = MLP(
+            # input_shape=(env_spec.observation_space.flat_dim,),
+            # output_dim=env_spec.action_space.n,
+            # hidden_sizes=hidden_sizes,
+            # hidden_nonlinearity=hidden_nonlinearity,
+            # output_nonlinearity=tf.nn.softmax,
+            # name=self._prob_network_name,
+    )
+
+    # Create new_policy using MLP as prob_network
+    new_top_policy = CategoricalMLPPolicy(
             env_spec=tf_hrl_env.spec,
-            hidden_sizes=(32, 32)
+            hidden_sizes=(32, 32),
+            prob_network=new_prob_network
     )
 
     # Hierarchy of policies
     hrl_policy = HierarchicalPolicy(
-            top_policy=top_policy,
+            top_policy=new_top_policy,
             skill_policy_prototype=skill_policy_prototype,
             skill_policies=trained_skill_policies,
             skill_stop_functions=trained_skill_policies_stop_funcs,
             skill_max_timesteps=20
     )
+    # TODO << not revised after this point >>
     # Link hrl_policy and hrl_env, so that hrl_env can use skills
     hrl_env.set_hrl_policy(hrl_policy)
 
@@ -110,23 +122,22 @@ def run_task(*_):
         asa_algo.train(sess=session)
 
 
-## Run directly
-# run_task()
-
 ## Run pickled
-# Erase snapshots from previous instant run
-import shutil
-shutil.rmtree('/home/h/holas3/garage/data/local/asa-test/instant-run', ignore_errors=False)
+# # Erase snapshots from previous instant run
+# import shutil
+# shutil.rmtree('/home/h/holas3/garage/data/local/asa-test/instant-run', ignore_errors=False)
 # Run experiment
 seed = 1
 run_experiment(
         run_task,
+        # Resume from edited snapshot
+        resume_from='data/local/asa-test/instant-run/itr_11_edited.pkl',
         # Configure TF
         use_tf=True,
         use_gpu=True,
         # Name experiment
-        exp_prefix='asa-test',
-        exp_name='instant-run',
+        exp_prefix='asa-test',   # TODO? rename
+        exp_name='instant-run',  # TODO? rename
         # Number of parallel workers for sampling
         n_parallel=0,
         # Snapshot information
