@@ -7,6 +7,7 @@ from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
 from sandbox.asa.policies import HierarchicalPolicy
 from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy
+from sandbox.asa.utils.network import MLP            # MLP for new top policy
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.baselines import GaussianMLPBaseline  # Baseline for Advantage function { A(s, a) = Q(s, a) - B(s) }
@@ -14,7 +15,6 @@ from sandbox.asa.envs import MinibotEnv              # Environment
 from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
-from garage.tf.core.network import MLP               # MLP for new top policy
 from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
@@ -57,24 +57,45 @@ def run_task(*_):
     # Get old policy from saved data
     old_top_policy = saved_data['policy']
 
-    # TODO Get W matrix from old_policy
+    # TODO? Done? : Get W matrices from old_policy
+    out_layer = old_top_policy._l_prob
+    hid_layers = []
+    h_l = out_layer
+    while h_l.input_layer is not None:
+        h_l = h_l.input_layer
+        hid_layers.append(h_l)
+    hid_layers.reverse()
+    hidden_w_tensors = [l.w for l in hid_layers]
+    hidden_b_tensors = [l.b for l in hid_layers]
+    output_w_tensor = out_layer.w
+    output_b_tensor = out_layer.b
 
-    # TODO Create new MLP using W matrix
-    new_prob_network = MLP(
-            # input_shape=(env_spec.observation_space.flat_dim,),
-            # output_dim=env_spec.action_space.n,
-            # hidden_sizes=hidden_sizes,
-            # hidden_nonlinearity=hidden_nonlinearity,
-            # output_nonlinearity=tf.nn.softmax,
-            # name=self._prob_network_name,
+    # TODO? Done? : Create new MLP using W matrices
+    new_prob_network = MLP(  # Creating asa.util.network.MLP, derived from garage.tf.core.network.MLP
+            # Parameters used to create original MLP (from CategoricalMLPPolicy)
+            input_shape=(tf_hrl_env.spec.observation_space.flat_dim,),
+            output_dim=tf_hrl_env.spec.action_space.n,
+            hidden_sizes=(32, 32),              # As was in asa_test.py
+            hidden_nonlinearity=tf.nn.tanh,     # Default from CategoricalMLPPolicy
+            output_nonlinearity=tf.nn.softmax,  # Fixed value from CategoricalMLPPolicy
+            name="prob_network",                # Fixed value from CategoricalMLPPolicy
+            # Pre-trained weight matrices
+            # TODO Provide tf.Tensor or tf.Variable instances with weights
+            hidden_w_tensors=hidden_w_tensors,
+            hidden_b_tensors=hidden_b_tensors,
+            output_w_tensor=output_w_tensor,
+            output_b_tensor=output_b_tensor
     )
 
     # Create new_policy using MLP as prob_network
     new_top_policy = CategoricalMLPPolicy(
             env_spec=tf_hrl_env.spec,
-            hidden_sizes=(32, 32),
+            hidden_sizes=(32, 32),  # As was in asa_test.py
             prob_network=new_prob_network
     )
+
+    # TODO saved_data['policy'] = new_top_policy
+    # TODO dump data into itr_11_edited.pkl
 
     # Hierarchy of policies
     hrl_policy = HierarchicalPolicy(
