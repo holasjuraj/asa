@@ -24,6 +24,7 @@ def run_task(*_):
     pkl_file = 'data/local/asa-test/itr_11.pkl'
     with tf.Session().as_default():
         saved_data = joblib.load(pkl_file)
+    new_data = dict(saved_data)  # New data to be dumped once edited
 
     ## Lower level environment & policies
     # Base (original) environment.
@@ -58,7 +59,7 @@ def run_task(*_):
     # Get old policy from saved data
     old_top_policy = saved_data['policy']
 
-    # TODO? Done? : Get W matrices from old_policy
+    # Get W matrices from old_policy
     out_layer = old_top_policy._l_prob
     hid_layers = []
     h_l = out_layer
@@ -71,7 +72,7 @@ def run_task(*_):
     output_w_tf_var = out_layer.w
     output_b_tf_var = out_layer.b
 
-    # TODO? Done? : Create new MLP using W matrices
+    # Create new MLP using W matrices
     new_prob_network = MLP(  # Creating asa.util.network.MLP, derived from garage.tf.core.network.MLP
             # Parameters used to create original MLP (from CategoricalMLPPolicy)
             input_shape=(tf_hrl_env.spec.observation_space.flat_dim,),
@@ -95,10 +96,7 @@ def run_task(*_):
             prob_network=new_prob_network
     )
 
-    # TODO saved_data['policy'] = new_top_policy
-    # TODO dump data into itr_11_edited.pkl
-
-    # Hierarchy of policies
+    ## Hierarchy of policies
     hrl_policy = HierarchicalPolicy(
             top_policy=new_top_policy,
             skill_policy_prototype=skill_policy_prototype,
@@ -106,13 +104,12 @@ def run_task(*_):
             skill_stop_functions=trained_skill_policies_stop_funcs,
             skill_max_timesteps=20
     )
-    # TODO << not revised after this point >>
     # Link hrl_policy and hrl_env, so that hrl_env can use skills
     hrl_env.set_hrl_policy(hrl_policy)
 
     ## Other
     # Baseline
-    baseline = GaussianMLPBaseline(env_spec=tf_hrl_env.spec)
+    baseline = saved_data['baseline']  # Take trained baseline
 
     # Main ASA algorithm
     asa_algo = AdaptiveSkillAcquisition(
@@ -125,6 +122,7 @@ def run_task(*_):
                 batch_size=5000,
                 max_path_length=100,
                 n_itr=25,
+                start_itr=saved_data['itr'] + 1,  # Continue from previous iteration number
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
@@ -134,6 +132,12 @@ def run_task(*_):
                 'discount': 0.99,
             }
     )
+
+    ## Save edited data
+    new_data['env'] = tf_hrl_env
+    new_data['policy'] = new_top_policy
+    new_data['algo'] = asa_algo
+    joblib.dump(new_data, '/home/h/holas3/garage/data/local/asa-test/instant-run/itr_11_edited.pkl', compress=3)
 
     ## Launch training
     # Configure TF session
