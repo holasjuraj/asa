@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 import joblib
+import os
 
 from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
@@ -19,11 +20,15 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 from garage.tf.core.layers import DenseLayer
 
 
-def run_task(*_):
+
+## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+
+
+with tf.Session().as_default():
     ## Load data from itr_N.pkl
-    pkl_file = 'data/local/asa-test/itr_11.pkl'
-    with tf.Session().as_default():
-        saved_data = joblib.load(pkl_file)
+    pkl_file = '/home/h/holas3/garage/data/local/asa-test/itr_11.pkl'
+    saved_data = joblib.load(pkl_file)
     new_data = dict(saved_data)  # New data to be dumped once edited
 
     ## Lower level environment & policies
@@ -82,7 +87,6 @@ def run_task(*_):
             output_nonlinearity=tf.nn.softmax,  # Fixed value from CategoricalMLPPolicy
             name="prob_network",                # Fixed value from CategoricalMLPPolicy
             # Pre-trained weight matrices
-            # TODO Provide tf.Tensor or tf.Variable instances with weights
             hidden_w_tf_vars=hidden_w_tf_vars,
             hidden_b_tf_vars=hidden_b_tf_vars,
             output_w_tf_var=output_w_tf_var,
@@ -135,35 +139,29 @@ def run_task(*_):
 
     ## Save edited data
     new_data['env'] = tf_hrl_env
-    new_data['policy'] = new_top_policy
-    new_data['algo'] = asa_algo
+    # new_data['policy'] = new_top_policy  # TODO! "TypeError: can't pickle _thread.RLock objects"
+    # new_data['algo'] = asa_algo          # TODO! "TypeError: can't pickle _EagerContext objects"
     joblib.dump(new_data, '/home/h/holas3/garage/data/local/asa-test/instant-run/itr_11_edited.pkl', compress=3)
 
-    ## Launch training
-    # Configure TF session
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    with tf.Session(config=config) as session:
-        # Train HRL agent
-        asa_algo.train(sess=session)
+print('################ SNAPSHOT FILE EDITING COMPLETE ################')
+exit()  # DEBUG
 
 
-## Run pickled
-# # Erase snapshots from previous instant run
-# import shutil
-# shutil.rmtree('/home/h/holas3/garage/data/local/asa-test/instant-run', ignore_errors=False)
-# Run experiment
+
+
+## Resume training
 seed = 1
 run_experiment(
-        run_task,
+        # Method call must be provided, but it will not be called if we use resume_from
+        method_call=lambda: None,
         # Resume from edited snapshot
         resume_from='/home/h/holas3/garage/data/local/asa-test/instant-run/itr_11_edited.pkl',
         # Configure TF
         use_tf=True,
         use_gpu=True,
         # Name experiment
-        exp_prefix='asa-test',   # TODO? rename
-        exp_name='instant-run',  # TODO? rename
+        exp_prefix='asa-test',
+        exp_name='instant-run-resumed',
         # Number of parallel workers for sampling
         n_parallel=0,
         # Snapshot information
