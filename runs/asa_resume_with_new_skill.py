@@ -16,11 +16,12 @@ from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
 from garage.misc.instrument import run_experiment    # Experiment-running util
+from garage.tf.core.layers import DenseLayer
 
 
 def run_task(*_):
     ## Load data from itr_N.pkl
-    pkl_file = 'data/local/asa-test/instant-run/itr_11.pkl'
+    pkl_file = 'data/local/asa-test/itr_11.pkl'
     with tf.Session().as_default():
         saved_data = joblib.load(pkl_file)
 
@@ -61,14 +62,14 @@ def run_task(*_):
     out_layer = old_top_policy._l_prob
     hid_layers = []
     h_l = out_layer
-    while h_l.input_layer is not None:
+    while isinstance(h_l.input_layer, DenseLayer):
         h_l = h_l.input_layer
         hid_layers.append(h_l)
     hid_layers.reverse()
-    hidden_w_tensors = [l.w for l in hid_layers]
-    hidden_b_tensors = [l.b for l in hid_layers]
-    output_w_tensor = out_layer.w
-    output_b_tensor = out_layer.b
+    hidden_w_tf_vars = [l.w for l in hid_layers]
+    hidden_b_tf_vars = [l.b for l in hid_layers]
+    output_w_tf_var = out_layer.w
+    output_b_tf_var = out_layer.b
 
     # TODO? Done? : Create new MLP using W matrices
     new_prob_network = MLP(  # Creating asa.util.network.MLP, derived from garage.tf.core.network.MLP
@@ -81,10 +82,10 @@ def run_task(*_):
             name="prob_network",                # Fixed value from CategoricalMLPPolicy
             # Pre-trained weight matrices
             # TODO Provide tf.Tensor or tf.Variable instances with weights
-            hidden_w_tensors=hidden_w_tensors,
-            hidden_b_tensors=hidden_b_tensors,
-            output_w_tensor=output_w_tensor,
-            output_b_tensor=output_b_tensor
+            hidden_w_tf_vars=hidden_w_tf_vars,
+            hidden_b_tf_vars=hidden_b_tf_vars,
+            output_w_tf_var=output_w_tf_var,
+            output_b_tf_var=output_b_tf_var
     )
 
     # Create new_policy using MLP as prob_network
@@ -152,7 +153,7 @@ seed = 1
 run_experiment(
         run_task,
         # Resume from edited snapshot
-        resume_from='data/local/asa-test/instant-run/itr_11_edited.pkl',
+        resume_from='/home/h/holas3/garage/data/local/asa-test/instant-run/itr_11_edited.pkl',
         # Configure TF
         use_tf=True,
         use_gpu=True,

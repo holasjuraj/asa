@@ -14,10 +14,10 @@ class MLP(GarageMLP):
             hidden_sizes,
             hidden_nonlinearity,
             output_nonlinearity,
-            hidden_w_tensors,
-            hidden_b_tensors,
-            output_w_tensor,
-            output_b_tensor,
+            hidden_w_tf_vars,
+            hidden_b_tf_vars,
+            output_w_tf_var,
+            output_b_tf_var,
             name=None,
             input_var=None,
             input_layer=None,
@@ -43,12 +43,12 @@ class MLP(GarageMLP):
             for idx, hidden_size in enumerate(hidden_sizes):
                 l_hid = ly.DenseLayer(
                     l_hid,
-                    num_units=hidden_size,    # TODO Get information from hidden_w_tensors[idx]
+                    num_units=hidden_size,    # TODO Get information from hidden_w_tf_vars[idx]
                                               #      and get rid of hidden_sizes parameter
                     nonlinearity=hidden_nonlinearity,
                     name="hidden_%d" % idx,
-                    w=hidden_w_tensors[idx],  # TODO Here we can provide
-                    b=hidden_b_tensors[idx],  #      tf.Tensor or tf.Variable
+                    w=hidden_w_tf_vars[idx],  # TODO Here we can provide
+                    b=hidden_b_tf_vars[idx],  #      tf.Tensor or tf.Variable
                     weight_normalization=weight_normalization)
                 if batch_normalization:
                     l_hid = ly.batch_norm(l_hid)
@@ -58,8 +58,8 @@ class MLP(GarageMLP):
                 num_units=output_dim,
                 nonlinearity=output_nonlinearity,
                 name="output",
-                w=output_w_tensor,  # TODO Here we can provide
-                b=output_b_tensor,  #      tf.Tensor or tf.Variable
+                w=output_w_tf_var,  # TODO Here we can provide
+                b=output_b_tf_var,  #      tf.Tensor or tf.Variable
                 weight_normalization=weight_normalization)
             if batch_normalization:
                 l_out = ly.batch_norm(l_out)
