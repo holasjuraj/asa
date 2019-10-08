@@ -115,7 +115,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         # Hence Trie parameters should be max_results = 1, min_f_score = <some reasonably high number, e.g. 20>
         if len(frequent_paths) == 0:
             return False, None, None
-        return False, None, None  # TODO delete me (debug)
+        return False, None, None  # DEBUG delete me
         top_subpath = frequent_paths[0]
         return True, top_subpath.start_observations, top_subpath.end_observations
 

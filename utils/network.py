@@ -7,7 +7,7 @@ from garage.tf.core import LayersPowered
 from garage.tf.core.network import MLP as GarageMLP
 
 
-class MLP(GarageMLP):
+class MLP(GarageMLP):  # TODO delete unused class
     def __init__(
             self,
             output_dim,
