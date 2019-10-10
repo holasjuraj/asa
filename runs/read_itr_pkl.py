@@ -9,7 +9,8 @@ from garage.misc.tensor_utils import unflatten_tensors
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-path = 'data/local/asa-test/itr_11.pkl'
+# path = '/home/h/holas3/garage/data/local/asa-test/itr_11.pkl'
+path = '/home/h/holas3/garage/data/local/asa-test/itr_11_edited.pkl'
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 sess = tf.InteractiveSession(config=config)
@@ -26,6 +27,9 @@ otp_weights = list(zip(
     otp_weight_values
 ))
 
+for name, value in otp_weights:
+    print(name)
+    print(value.T)
 
 
 sess.close()

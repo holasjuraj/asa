@@ -77,10 +77,9 @@ with tf.Session(config=config).as_default():
     # 3) Create weights for new top policy
     ntp_weights = [(name, np.copy(value)) for name, value in otp_weights]
     # TODO! adjust weights to integrate new skill
-    ntp_weights[-2][1][:, 0] = 42  # DEBUG dummy change
     ntp_weight_values = [value for _, value in ntp_weights]
 
-     # 4) Create new policy and randomly initialize its weights
+    # 4) Create new policy and randomly initialize its weights
     new_top_policy = CategoricalMLPPolicy(
         env_spec=tf_hrl_env.spec,  # This env counts with new skill (action space = n + 1)
         hidden_sizes=(32, 32),     # As was in asa_test.py,
@@ -139,7 +138,7 @@ with tf.Session(config=config).as_default():
     # new_data['can we pickle this? no'] = new_prob_network
     # new_data['can we pickle this? no'] = debug_output_w_1
     # new_data['can we pickle this? no'] = debug_output_w_2
-    joblib.dump(new_data, '/home/h/holas3/garage/data/local/asa-test/instant-run/itr_11_edited.pkl', compress=3)
+    joblib.dump(new_data, '/home/h/holas3/garage/data/local/asa-test/itr_11_edited.pkl', compress=3)
 
 print('################ SNAPSHOT FILE EDITING COMPLETE ################')
 exit()  # DEBUG
