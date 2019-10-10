@@ -1,5 +1,7 @@
 import numpy as np
 import time
+
+from sandbox.asa.envs import AsaEnv
 from garage.misc import tensor_utils
 
 
@@ -32,8 +34,11 @@ def skill_rollout(env,
     terminated = []
     rendered_rgbs = []
     if reset_start_rollout:
-        env.reset()  # otherwise it will never advance!!
-    o = env.unwrapped.get_current_obs()
+        o = env.reset()
+    else:
+        # Unwrap from normalized and TF envs
+        # TODO! starting observation o will be non-normalized!
+        o = AsaEnv.unwrap_to_asa_env(env).get_current_obs()
     agent.reset()
     path_length = 0
     if animated:
@@ -55,7 +60,14 @@ def skill_rollout(env,
             break
         terminated.append(0)
         # skill decides to terminate
-        if skill_stopping_func and skill_stopping_func(actions, observations):
+        path_dict = dict(
+            observations=tensor_utils.stack_tensor_list(observations),
+            actions=tensor_utils.stack_tensor_list(actions),
+            rewards=tensor_utils.stack_tensor_list(rewards),
+            agent_infos=tensor_utils.stack_tensor_dict_list(agent_infos),
+            env_infos=tensor_utils.stack_tensor_dict_list(env_infos),  # here it concatenates all lower-level paths!
+        )
+        if skill_stopping_func and skill_stopping_func(path_dict):
             break
 
         o = next_o

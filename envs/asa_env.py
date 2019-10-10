@@ -20,3 +20,9 @@ class AsaEnv(Env, ABC):
         :param start_obs: desired initial observation
         """
         raise NotImplementedError
+
+    @staticmethod
+    def unwrap_to_asa_env(env):
+        while not isinstance(env, AsaEnv):
+            env = env.env
+        return env

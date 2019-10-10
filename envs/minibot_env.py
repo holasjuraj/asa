@@ -102,6 +102,7 @@ class MinibotEnv(AsaEnv, Serializable):
         """
         :param radar_range: how many measurements does 'radar' make to each of 4 sides (and combinations)
         :param radar_resolution: distance between two measurements of agent`s 'radar'
+        :param discretized: discretized actions from {<-1,-0.33> , <-0.33,0.33> , <0.33,1>} to [-1, 0, 1]
         :param use_maps: which maps to use, list of indexes or 'all'
         """
         Serializable.quick_init(self, locals())
