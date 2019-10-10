@@ -94,6 +94,30 @@ with tf.Session(config=config).as_default():
     )
 
 
+    # DEBUG ........ initialize uninitialized TF variables ........
+    uninited_var_names = tf.get_default_session().run(tf.report_uninitialized_variables(tf.global_variables()))
+    print('before:\n', uninited_var_names)
+
+    def initialize_uninitialized_tf_variables(sess=None, variables=None):
+        if sess is None:
+            sess = tf.get_default_session()
+        if variables is None:
+            variables = tf.global_variables()
+        global_vars = variables
+        is_initialized = sess.run([tf.is_variable_initialized(var) for var in global_vars])
+        not_initialized_vars = [var for (var, inited) in zip(global_vars, is_initialized) if not inited]
+
+        if len(not_initialized_vars) > 0:
+            sess.run(tf.variables_initializer(not_initialized_vars))
+
+    initialize_uninitialized_tf_variables()
+
+    uninited_var_names = tf.get_default_session().run(tf.report_uninitialized_variables(tf.global_variables()))
+    print('after:\n', uninited_var_names)
+    # DEBUG ................ end ................
+
+
+
     ## Hierarchy of policies
     hrl_policy = HierarchicalPolicy(
         top_policy=new_top_policy,
