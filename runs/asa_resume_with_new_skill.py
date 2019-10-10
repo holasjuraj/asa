@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import tensorflow as tf
+import numpy as np
 import joblib
 import os
 
@@ -8,7 +9,6 @@ from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
 from sandbox.asa.policies import HierarchicalPolicy
 from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy
-from sandbox.asa.utils.network import MLP            # MLP for new top policy
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.baselines import GaussianMLPBaseline  # Baseline for Advantage function { A(s, a) = Q(s, a) - B(s) }
@@ -17,15 +17,14 @@ from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
 from garage.misc.instrument import run_experiment    # Experiment-running util
-from garage.tf.core.layers import DenseLayer
-
-
+from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
-
-with tf.Session().as_default():
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+with tf.Session(config=config).as_default():
     ## Load data from itr_N.pkl
     pkl_file = '/home/h/holas3/garage/data/local/asa-test/itr_11.pkl'
     saved_data = joblib.load(pkl_file)
@@ -60,86 +59,41 @@ with tf.Session().as_default():
     )
     tf_hrl_env = TfEnv(hrl_env)
 
+
     ## Top policy
-    # Get old policy from saved data
+    # 1) Get old policy from saved data
     old_top_policy = saved_data['policy']
 
-    # Get W matrices from old_top_policy  # TODO delete this segment
-    out_layer = old_top_policy._l_prob
-    hid_layers = []
-    h_l = out_layer
-    while isinstance(h_l.input_layer, DenseLayer):
-        h_l = h_l.input_layer
-        hid_layers.append(h_l)
-    hid_layers.reverse()
-    hidden_w_tf_vars = [l.w for l in hid_layers]
-    hidden_b_tf_vars = [l.b for l in hid_layers]
-    output_w_tf_var = out_layer.w
-    output_b_tf_var = out_layer.b
-
-    # Get W matrices from old_top_policy  # TODO finish
-    from garage.misc.tensor_utils import unflatten_tensors
-    weight_values = unflatten_tensors(
+    # 2) Get weights of old top policy
+    otp_weight_values = unflatten_tensors(
         old_top_policy.get_param_values(),
         old_top_policy.get_param_shapes()
     )
-    weights = zip(
+    otp_weights = zip(
         [p.name for p in old_top_policy.get_params()],
-        weight_values
+        otp_weight_values
     )
 
-    # Create new MLP using W matrices  # TODO delete? will we need custom MLP when using policy.set_param_values()?
-    new_prob_network = MLP(  # Creating asa.util.network.MLP, derived from garage.tf.core.network.MLP
-        # Parameters used to create original MLP (from CategoricalMLPPolicy)
-        input_shape=(tf_hrl_env.spec.observation_space.flat_dim,),
-        output_dim=tf_hrl_env.spec.action_space.n,
-        hidden_sizes=(32, 32),              # As was in asa_test.py
-        hidden_nonlinearity=tf.nn.tanh,     # Default from CategoricalMLPPolicy
-        output_nonlinearity=tf.nn.softmax,  # Fixed value from CategoricalMLPPolicy
-        name="prob_network",                # Fixed value from CategoricalMLPPolicy
-        # Pre-trained weight matrices
-        hidden_w_tf_vars=hidden_w_tf_vars,
-        hidden_b_tf_vars=hidden_b_tf_vars,
-        output_w_tf_var=output_w_tf_var,
-        output_b_tf_var=output_b_tf_var
-    )
+    # 3) Create weights for new top policy
+    ntp_weights = [(name, np.copy(value)) for name, value in otp_weights]
+    # TODO! adjust weights to integrate new skill
+    ntp_weights[-2][1][:, 0] = 42  # DEBUG dummy change
+    ntp_weight_values = [value for _, value in ntp_weights]
 
-    # DEBUG ........ this is runnable, and pickle can NOT pickle it ........
-    from garage.tf.core.network import MLP as GarageMLP
-    import numpy as np
-
-    debug_output_w_1 = tf.Variable(name='dummy1', initial_value=tf.zeros((32, 2)))
-    debug_output_w_2 = tf.get_variable(
-        name='dummy2',
-        shape=(32, 2),
-        initializer=tf.zeros_initializer(),
-        trainable=False,
-        regularizer=None,
-        dtype=tf.float32)
-    init_debug_op = tf.variables_initializer([debug_output_w_1])
-    init_debug_op.run()
-
-    new_prob_network = GarageMLP(
-        input_shape = (25,),
-        output_dim = 2,
-        hidden_sizes = (32, 32),
-        hidden_nonlinearity = tf.nn.tanh,
-        output_nonlinearity = tf.nn.tanh,
-        # output_w_init=debug_output_w_1,
-        name='dummy'
-    )
-    tf.global_variables_initializer().run()  # to init all variables in new_prob_network
-    # exit()
-    # DEBUG ........ end ........
-
-    # Create new_policy using MLP as prob_network  # TODO Create empty policy instead
+     # 4) Create new policy and randomly initialize its weights
     new_top_policy = CategoricalMLPPolicy(
-        env_spec=tf_hrl_env.spec,
-        hidden_sizes=(32, 32),  # As was in asa_test.py
-        prob_network=new_prob_network
+        env_spec=tf_hrl_env.spec,  # This env counts with new skill (action space = n + 1)
+        hidden_sizes=(32, 32),     # As was in asa_test.py,
+        name="CategoricalMLPPolicy2"
+    )
+    ntp_init_op = tf.variables_initializer(new_top_policy.get_params())
+    ntp_init_op.run()
+
+    # 5) Fill new policy with adjusted weights
+    new_top_policy.set_param_values(
+        flattened_params=flatten_tensors(ntp_weight_values)
     )
 
-    # TODO! Fill policy with values using Parametrized.set_param_values()
 
     ## Hierarchy of policies
     hrl_policy = HierarchicalPolicy(
@@ -180,11 +134,11 @@ with tf.Session().as_default():
 
     ## Save edited data
     new_data['env'] = tf_hrl_env
-    # new_data['policy'] = new_top_policy  # TODO! "TypeError: can't pickle _thread.RLock objects"
+    new_data['policy'] = new_top_policy
     # new_data['algo'] = asa_algo          # TODO! "TypeError: can't pickle _EagerContext objects"
     # new_data['can we pickle this? no'] = new_prob_network
     # new_data['can we pickle this? no'] = debug_output_w_1
-    new_data['can we pickle this? no'] = debug_output_w_2
+    # new_data['can we pickle this? no'] = debug_output_w_2
     joblib.dump(new_data, '/home/h/holas3/garage/data/local/asa-test/instant-run/itr_11_edited.pkl', compress=3)
 
 print('################ SNAPSHOT FILE EDITING COMPLETE ################')
