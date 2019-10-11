@@ -135,9 +135,20 @@ with tf.Session(config=config).as_default():
     new_data['env'] = tf_hrl_env
     new_data['policy'] = new_top_policy
     # new_data['algo'] = asa_algo          # TODO! "TypeError: can't pickle _EagerContext objects"
-    # new_data['can we pickle this? no'] = new_prob_network
-    # new_data['can we pickle this? no'] = debug_output_w_1
-    # new_data['can we pickle this? no'] = debug_output_w_2
+
+    # Reason:
+    # AdaptiveSkillAcquisition uses TRPO, TRPO inherits NPO, NPO uses tf.name_scope,
+    # name_scope uses tf.python.context.context(), context uses _EagerContext,
+    # _EagerContext inherits threading.local which cannot be pickled
+    import threading
+    new_data['can we pickle this? no'] = threading.local()
+
+    # Solution:
+    # A) Implement __getstate__() and __setstate__() in NPO class, that will
+    # export/import everything *except* self._name_scope .
+    # B) In NPO, change self._name_scope to local variable _name_scope, and
+    # hope that it won`t mess up other things.
+
     joblib.dump(new_data, '/home/h/holas3/garage/data/local/asa-test/itr_11_edited.pkl', compress=3)
 
 print('################ SNAPSHOT FILE EDITING COMPLETE ################')
