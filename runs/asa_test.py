@@ -126,7 +126,7 @@ run_experiment(
         use_gpu=True,
         # Name experiment
         exp_prefix='asa-test',
-        exp_name='instant-run',
+        # exp_name='instant-run',
         # Number of parallel workers for sampling
         n_parallel=0,
         # Snapshot information

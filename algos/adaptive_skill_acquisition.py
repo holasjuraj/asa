@@ -53,8 +53,6 @@ class AdaptiveSkillAcquisition(BatchPolopt):
     @overrides
     def get_itr_snapshot(self, itr, samples_data):
         res = self._top_algo.get_itr_snapshot(itr, samples_data)
-        # Include 'algo' so that we can run resume_experiment.py
-        res['algo'] = self
         # TODO? res['some hrl stuff'] = None
         return res
 
