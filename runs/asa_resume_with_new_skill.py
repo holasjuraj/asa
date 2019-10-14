@@ -134,20 +134,29 @@ with tf.Session(config=config).as_default():
     ## Save edited data
     new_data['env'] = tf_hrl_env
     new_data['policy'] = new_top_policy
-    # new_data['algo'] = asa_algo          # TODO! "TypeError: can't pickle _EagerContext objects"
+    new_data['algo'] = asa_algo          # TODO! "_pickle.PicklingError: Can't pickle <class 'garage.tf.misc.tensor_utils.PolicyOptInputs'>: it's not found as garage.tf.misc.tensor_utils.PolicyOptInputs"
 
+    # DEBUG
+    from garage.tf.algos import NPO
+    new_data['can we pickle this? no'] = NPO(policy=new_top_policy,
+                                             env=tf_hrl_env,
+                                             baseline=baseline)
+
+
+    # "TypeError: can't pickle _EagerContext objects"
+    #
     # Reason:
     # AdaptiveSkillAcquisition uses TRPO, TRPO inherits NPO, NPO uses tf.name_scope,
     # name_scope uses tf.python.context.context(), context uses _EagerContext,
     # _EagerContext inherits threading.local which cannot be pickled
-    import threading
-    new_data['can we pickle this? no'] = threading.local()
-
-    # Solution:
+    #
+    # Possible solutions:
     # A) Implement __getstate__() and __setstate__() in NPO class, that will
     # export/import everything *except* self._name_scope .
     # B) In NPO, change self._name_scope to local variable _name_scope, and
     # hope that it won`t mess up other things.
+    #
+    # Chosen solution: B, edit garage.tf.algos.npo.NPO.__init__
 
     joblib.dump(new_data, '/home/h/holas3/garage/data/local/asa-test/itr_11_edited.pkl', compress=3)
 
