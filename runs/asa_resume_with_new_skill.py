@@ -8,7 +8,7 @@ import os
 from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
 from sandbox.asa.policies import HierarchicalPolicy
-from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy
+from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy, MinibotRightPolicy
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.baselines import GaussianMLPBaseline  # Baseline for Advantage function { A(s, a) = Q(s, a) - B(s) }
@@ -42,11 +42,13 @@ def run_task(*_):
             MinibotForwardPolicy(env_spec=base_env.spec),
             MinibotLeftPolicy(env_spec=base_env.spec),
             # TODO! new skill policy
+            MinibotRightPolicy(env_spec=base_env.spec)  # DEBUG
         ]
         trained_skill_policies_stop_funcs = [
             lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
             lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
             # TODO! new skill stopping function
+            lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°  # DEBUG
         ]
         skill_policy_prototype = GaussianMLPPolicy(
                 env_spec=tf_base_env.spec,
@@ -77,8 +79,19 @@ def run_task(*_):
         )
 
         # 3) Create weights for new top policy
-        ntp_weights = [(name, np.copy(value)) for name, value in otp_weights]
+        ntp_weights = [[name, np.copy(value)] for name, value in otp_weights]
         # TODO! adjust weights to integrate new skill
+        # DEBUG get new weights for "right" as copy of "left" weights
+        ntp_weights[-1][1] = np.concatenate([
+            ntp_weights[-1][1],
+            np.atleast_1d(ntp_weights[-1][1][-1] + 0.01)  # to prefer "right"
+        ])
+        print(ntp_weights[-2][1].shape)
+        ntp_weights[-2][1] = np.concatenate([
+            ntp_weights[-2][1],
+            np.reshape(ntp_weights[-2][1][:,1], (32, 1))
+        ], axis=1)
+        # /DEBUG
         ntp_weight_values = [value for _, value in ntp_weights]
 
         # 4) Create new policy and randomly initialize its weights
@@ -134,7 +147,7 @@ def run_task(*_):
         )
 
         ## Launch training
-        asa_algo.train(sess=tf_session)  # TODO? provide session
+        asa_algo.train(sess=tf_session)
 
 
 ## Run directly

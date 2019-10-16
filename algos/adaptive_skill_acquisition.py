@@ -75,7 +75,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         # TODO extract Trie parameters
         min_length = 3
         max_length = 10
-        action_map = {0: 's', 1: 'L'}
+        action_map = {0: 's', 1: 'L', 2: 'R'}
         min_f_score = 2
         max_results = 10
         aggregations = ['mean']  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
