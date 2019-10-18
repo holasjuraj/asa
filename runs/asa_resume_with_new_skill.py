@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(description='Resume ASA training with new skill
 parser.add_argument('-s', '--snapshot', help='path to snapshot file (itr_N.pkl) to start from', metavar='FILE')
 args = parser.parse_args()
 
-snapshot_file = args.snapshot or '/home/h/holas3/garage/data/local/asa_test/itr_11.pkl'  # for direct runs
+snapshot_file = args.snapshot or '/home/h/holas3/garage/data/local/asa-test/itr_11.pkl'  # for direct runs
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 
 

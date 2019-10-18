@@ -46,6 +46,8 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         self._hrl_policy = hrl_policy
         # TODO assertion for types
 
+        logger.set_tensorboard_step_key('Iteration')
+
     @overrides
     def init_opt(self):
         return self._top_algo.init_opt()
