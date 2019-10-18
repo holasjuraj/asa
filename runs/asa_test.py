@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import tensorflow as tf
+import os
+from datetime import datetime
 
 from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
@@ -14,6 +16,10 @@ from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
 from garage.misc.instrument import run_experiment    # Experiment-running util
+
+
+## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
+# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 plot = True
@@ -39,12 +45,12 @@ def run_task(*_):
 
     # Skill policies, operating in base environment
     trained_skill_policies = [
-        MinibotForwardPolicy(env_spec=base_env.spec),
-        MinibotLeftPolicy(env_spec=base_env.spec)
+            MinibotForwardPolicy(env_spec=base_env.spec),
+            MinibotLeftPolicy(env_spec=base_env.spec)
     ]
     trained_skill_policies_stop_funcs = [
-        lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
-        lambda path: len(path['actions']) >= 3   # 3 steps to rotate 90°
+            lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
+            lambda path: len(path['actions']) >= 3   # 3 steps to rotate 90°
     ]
     skill_policy_prototype = GaussianMLPPolicy(
             env_spec=tf_base_env.spec,
@@ -115,10 +121,14 @@ def run_task(*_):
 
 ## Run pickled
 # Erase snapshots from previous instant run
-import shutil
-shutil.rmtree('/home/h/holas3/garage/data/local/asa-test/instant-run', ignore_errors=False)
+# import shutil
+# shutil.rmtree('/home/h/holas3/garage/data/local/asa_test/instant_run', ignore_errors=False)
+
 # Run experiment
 seed = 1
+exp_name_direct = None  # 'instant_run'
+exp_name_extra = 'Basic_run_25_iters'
+
 run_experiment(
         run_task,
         # Configure TF
@@ -126,7 +136,11 @@ run_experiment(
         use_gpu=True,
         # Name experiment
         exp_prefix='asa-test',
-        # exp_name='instant-run',
+        exp_name=exp_name_direct or \
+                 (datetime.now().strftime('%Y_%m_%d-%H_%M')
+                  + (('--' + exp_name_extra) if exp_name_extra else '')
+                  + (('--s' + str(seed)) if seed else '')
+                 ),
         # Number of parallel workers for sampling
         n_parallel=0,
         # Snapshot information
