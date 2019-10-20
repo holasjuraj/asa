@@ -11,6 +11,7 @@ from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
 from sandbox.asa.policies import HierarchicalPolicy
 from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy, MinibotRightPolicy
+from sandbox.asa.policies import CategoricalMLPSkillIntegrator
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.envs import TfEnv                     # Environment wrapper
@@ -28,7 +29,7 @@ parser = argparse.ArgumentParser(description='Resume ASA training with new skill
 parser.add_argument('-s', '--snapshot', help='path to snapshot file (itr_N.pkl) to start from', metavar='FILE')
 args = parser.parse_args()
 
-snapshot_file = args.snapshot or '/home/h/holas3/garage/data/local/asa-test/itr_11.pkl'  # for direct runs
+snapshot_file = args.snapshot or '/home/h/holas3/garage/data/local/asa-test/itr_0.pkl'  # for direct runs
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 
 
@@ -77,29 +78,17 @@ def run_task(*_):
         old_top_policy = saved_data['policy']
 
         # 2) Get weights of old top policy
-        otp_weight_values = unflatten_tensors(
+        otp_weights = unflatten_tensors(
                 old_top_policy.get_param_values(),
                 old_top_policy.get_param_shapes()
         )
-        otp_weights = zip(
-                [p.name for p in old_top_policy.get_params()],
-                otp_weight_values
-        )
 
         # 3) Create weights for new top policy
-        ntp_weights = [[name, np.copy(value)] for name, value in otp_weights]
-        # TODO! integrate new skill (adjust weights) using SkillIntegrator, not manually
-        # DEBUG integration of new skill: get new weights for "right" as copy of "left" weights
-        ntp_weights[-1][1] = np.concatenate([
-                ntp_weights[-1][1],
-                np.atleast_1d(ntp_weights[-1][1][-1] + 0.01)  # +0.01 to prefer "right"
-        ])
-        ntp_weights[-2][1] = np.concatenate([
-                ntp_weights[-2][1],
-                np.reshape(ntp_weights[-2][1][:,1], (32, 1))
-        ], axis=1)
-        # /DEBUG
-        ntp_weight_values = [value for _, value in ntp_weights]
+        skill_integrator = CategoricalMLPSkillIntegrator()
+        ntp_weight_values = skill_integrator.integrate_skill(
+                old_policy_weights=otp_weights,
+                method=skill_integrator.Method.RANDOM_BIASED
+        )
 
         # 4) Create new policy and randomly initialize its weights
         new_top_policy = CategoricalMLPPolicy(
@@ -163,7 +152,7 @@ def run_task(*_):
 ## Run pickled
 seed = 1
 exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'From_all_with_MinibotRight'
+exp_name_extra = 'After_skill_integrator'
 
 run_experiment(
         run_task,

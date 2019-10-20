@@ -1,4 +1,7 @@
 from sandbox.asa.policies.hierachical_policy import HierarchicalPolicy
 from sandbox.asa.policies.minibot_policies import MinibotForwardPolicy, MinibotLeftPolicy, MinibotRightPolicy
+from sandbox.asa.policies.skill_integrator import SkillIntegrator, CategoricalMLPSkillIntegrator
 
-__all__ = ['HierarchicalPolicy', 'MinibotForwardPolicy', 'MinibotLeftPolicy', 'MinibotRightPolicy']
+__all__ = ['HierarchicalPolicy',
+           'MinibotForwardPolicy', 'MinibotLeftPolicy', 'MinibotRightPolicy',
+           'SkillIntegrator', 'CategoricalMLPSkillIntegrator']
