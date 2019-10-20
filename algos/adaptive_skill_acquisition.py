@@ -46,6 +46,8 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         self._hrl_policy = hrl_policy
         # TODO assertion for types
 
+        logger.set_tensorboard_step_key('Iteration')
+
     @overrides
     def init_opt(self):
         return self._top_algo.init_opt()
@@ -75,7 +77,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         # TODO extract Trie parameters
         min_length = 3
         max_length = 10
-        action_map = {0: 's', 1: 'L'}
+        action_map = {0: 's', 1: 'L', 2: 'R'}
         min_f_score = 2
         max_results = 10
         aggregations = ['mean']  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
@@ -113,7 +115,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         # Hence Trie parameters should be max_results = 1, min_f_score = <some reasonably high number, e.g. 20>
         if len(frequent_paths) == 0:
             return False, None, None
-        return False, None, None  # TODO delete me (debug)
+        return False, None, None  # DEBUG delete me
         top_subpath = frequent_paths[0]
         return True, top_subpath.start_observations, top_subpath.end_observations
 
