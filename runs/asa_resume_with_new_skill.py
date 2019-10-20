@@ -87,7 +87,7 @@ def run_task(*_):
         skill_integrator = CategoricalMLPSkillIntegrator()
         ntp_weight_values = skill_integrator.integrate_skill(
                 old_policy_weights=otp_weights,
-                method=skill_integrator.Method.RANDOM_BIASED
+                method=skill_integrator.Method.OLD_SKILL_AVG
         )
 
         # 4) Create new policy and randomly initialize its weights
@@ -152,7 +152,7 @@ def run_task(*_):
 ## Run pickled
 seed = 1
 exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'After_skill_integrator'
+exp_name_extra = 'Skill_integrator_from_left_skill'
 
 run_experiment(
         run_task,
