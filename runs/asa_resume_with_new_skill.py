@@ -26,10 +26,15 @@ from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Resume ASA training with new skill')
-parser.add_argument('-s', '--snapshot', help='path to snapshot file (itr_N.pkl) to start from', metavar='FILE')
+parser.add_argument('-f', '--file',
+                    help='path to snapshot file (itr_N.pkl) to start from', metavar='FILE')
+parser.add_argument('-s', '--seed',
+                    help='specific randomization seed, "random" for random seed, '
+                         '"keep" to keep seed specified in training script. Default: "keep"',
+                    metavar='SEED', default='keep')
 args = parser.parse_args()
 
-snapshot_file = args.snapshot or '/home/h/holas3/garage/data/local/asa-test/itr_0.pkl'  # for direct runs
+snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/itr_0.pkl'  # for direct runs
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 
 
@@ -154,6 +159,10 @@ seed = 1
 exp_name_direct = None  # 'instant_run'
 exp_name_extra = 'Skill_integrator_from_left_skill'
 
+seed = seed if args.seed == 'keep' \
+       else None if args.seed == 'random' \
+       else int(args.seed)
+
 run_experiment(
         run_task,
         # Configure TF
@@ -172,5 +181,5 @@ run_experiment(
         # Snapshot information
         snapshot_mode="all",
         # Specifies the seed for the experiment  (random seed if None)
-        seed=seed,
+        seed=seed
 )
