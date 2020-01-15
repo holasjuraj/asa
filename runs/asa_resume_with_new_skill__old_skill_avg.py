@@ -133,9 +133,9 @@ def run_task(*_):
                 top_algo_cls=TRPO,
                 low_algo_cls=TRPO,
                 # Top algo kwargs
-                    batch_size=15000,
+                    batch_size=5000,
                     max_path_length=100,
-                    n_itr=20,
+                    n_itr=40,
                     start_itr=saved_data['itr'] + 1,  # Continue from previous iteration number
                     discount=0.99,
                     force_batch_sampler=True,
@@ -157,7 +157,7 @@ def run_task(*_):
 ## Run pickled
 seed = 1
 exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'From_all_with_MinibotRight_mapsAll_b15000'
+exp_name_extra = 'Skill_integrator_old_skill_avg_mapsAll_b5000'
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \

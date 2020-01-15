@@ -104,9 +104,9 @@ def run_task(*_):
             top_algo_cls=TRPO,
             low_algo_cls=TRPO,
             # Top algo kwargs
-                batch_size=1000,
+                batch_size=15000,
                 max_path_length=100,
-                n_itr=100,
+                n_itr=20,
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
@@ -137,7 +137,7 @@ def run_task(*_):
 # Run experiment
 seed = 1
 exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'Basic_run_100itrs_mapsAll_b1000'
+exp_name_extra = 'Basic_run_20itrs_mapsAll_b15000'
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
