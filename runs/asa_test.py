@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 import os
+import argparse
 from datetime import datetime
 
 from sandbox.asa.algos import AdaptiveSkillAcquisition
@@ -22,6 +23,15 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 # os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
+# Parse arguments
+parser = argparse.ArgumentParser(description='Resume ASA training with new skill')
+parser.add_argument('-s', '--seed',
+                    help='specific randomization seed, "random" for random seed, '
+                         '"keep" to keep seed specified in training script. Default: "keep"',
+                    metavar='SEED', default='keep')
+args = parser.parse_args()
+
+
 plot = True
 # if plot:
 #     # Workaround to create Qt application in main thread
@@ -37,7 +47,7 @@ def run_task(*_):
     # Base (original) environment.
     base_env = normalize(
                 MinibotEnv(
-                    use_maps=[0, 1],  # 'all',  # [0,1]
+                    use_maps='all',  # [0,1]
                     discretized=True
                 )
     )
@@ -94,9 +104,9 @@ def run_task(*_):
             top_algo_cls=TRPO,
             low_algo_cls=TRPO,
             # Top algo kwargs
-                batch_size=5000,
+                batch_size=1000,
                 max_path_length=100,
-                n_itr=25,
+                n_itr=100,
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
@@ -127,7 +137,11 @@ def run_task(*_):
 # Run experiment
 seed = 1
 exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'Basic_run_25_iters'
+exp_name_extra = 'Basic_run_100itrs_mapsAll_b1000'
+
+seed = seed if args.seed == 'keep' \
+       else None if args.seed == 'random' \
+       else int(args.seed)
 
 run_experiment(
         run_task,
