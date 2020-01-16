@@ -48,4 +48,4 @@ class SkillLearningEnv(Wrapper, Serializable):
     @overrides
     def reset(self, **kwargs):
         start_obs = self._start_obss[np.random.randint(self._num_obs), :]
-        return self.env.reset(start_obs=start_obs, **kwargs)  # TODO! change to reset_to_state?
+        return self.env.reset_to_state(start_obs=start_obs, **kwargs)  # TODO wrapping issue: env will be AsaEnv wrapped inside TfEnv/NormalizedEnv

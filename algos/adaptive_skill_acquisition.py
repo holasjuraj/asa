@@ -55,7 +55,8 @@ class AdaptiveSkillAcquisition(BatchPolopt):
     @overrides
     def get_itr_snapshot(self, itr, samples_data):
         res = self._top_algo.get_itr_snapshot(itr, samples_data)
-        # TODO? res['some hrl stuff'] = None
+        res['paths'] = samples_data['paths']  # to be able to construct Trie from exported snapshot
+        # TODO? res['some more hrl stuff'] = None
         return res
 
     @overrides

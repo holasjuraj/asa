@@ -16,7 +16,6 @@ from garage.core.serializable import Serializable
 from garage.misc.overrides import overrides
 from garage.misc import logger
 
-_states_cache = {}
 
 
 class MinibotEnv(AsaEnv, Serializable):
@@ -98,18 +97,28 @@ class MinibotEnv(AsaEnv, Serializable):
 
 
     # noinspection PyMissingConstructor
-    def __init__(self, radar_range=2, radar_resolution=1, discretized=True, use_maps='all'):
+    def __init__(self,
+                 radar_range=2,
+                 radar_resolution=1,
+                 discretized=True,
+                 use_maps='all',
+                 states_cache=None):
         """
         :param radar_range: how many measurements does 'radar' make to each of 4 sides (and combinations)
         :param radar_resolution: distance between two measurements of agent`s 'radar'
         :param discretized: discretized actions from {<-1,-0.33> , <-0.33,0.33> , <0.33,1>} to [-1, 0, 1]
         :param use_maps: which maps to use, list of indexes or 'all'
+        :param states_cache: pre-populated cache to use (observation -> set of states)
         """
         Serializable.quick_init(self, locals())
 
         self.radar_range = radar_range
         self.radar_resolution = radar_resolution
         self.discretized = discretized
+        if states_cache is None:
+            self.states_cache = dict()
+        else:
+            self.states_cache = states_cache
         self.agent_width = 2.4/np.pi
         self.max_action_distance = 0.2
         self.do_render_init = True
@@ -197,7 +206,7 @@ class MinibotEnv(AsaEnv, Serializable):
         """
         self.do_render_init = True
         k = tuple(np.array(start_obs, dtype='int8'))
-        s = _states_cache[k]
+        s = self.states_cache[k]
         m_idx, pos, ori = np.random.choice(list(s))
         pos = np.array(pos)
         self.current_map_idx = m_idx
@@ -234,13 +243,13 @@ class MinibotEnv(AsaEnv, Serializable):
         else:
             raise NotImplementedError
         # Cache observation
-        global _states_cache
+
         k = tuple(np.array(obs, dtype='int8'))
         v = (self.current_map_idx, tuple(self.agent_pos), self.agent_ori)
-        if k not in _states_cache:
-            _states_cache[k] = {v}
+        if k not in self.states_cache:
+            self.states_cache[k] = {v}
         else:
-            _states_cache[k].add(v)
+            self.states_cache[k].add(v)
         # Return observation and others
         return Step(observation=obs, reward=reward, done=done,
                     agent_pos=self.agent_pos, agent_ori=self.agent_ori,

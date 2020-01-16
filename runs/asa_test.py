@@ -48,7 +48,8 @@ def run_task(*_):
     base_env = normalize(
                 MinibotEnv(
                     use_maps='all',  # [0,1]
-                    discretized=True
+                    discretized=True,
+                    states_cache=dict()
                 )
     )
     tf_base_env = TfEnv(base_env)
@@ -104,13 +105,13 @@ def run_task(*_):
             top_algo_cls=TRPO,
             low_algo_cls=TRPO,
             # Top algo kwargs
-                batch_size=1000,
+                batch_size=500,
                 max_path_length=100,
                 n_itr=100,
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
-                'batch_size': 1000,
+                'batch_size': 500,
                 'max_path_length': 30,
                 'n_itr': 25,
                 'discount': 0.99,
@@ -136,7 +137,7 @@ def run_task(*_):
 
 # Run experiment
 seed = 1
-exp_name_direct = None  # 'instant_run'
+exp_name_direct = 'instant_run'
 exp_name_extra = 'Basic_run_100itrs_mapsAll_b1000'
 
 seed = seed if args.seed == 'keep' \
