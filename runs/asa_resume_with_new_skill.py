@@ -48,7 +48,7 @@ def run_task(*_):
 
         ## Lower level environment & policies
         # Base (original) environment.
-        base_env = saved_data['env'].env.env
+        base_env = saved_data['env'].env.env  # <NormalizedEnv<MinibotEnv instance>>
         tf_base_env = TfEnv(base_env)
 
         # Skill policies, operating in base environment

@@ -56,7 +56,9 @@ class AdaptiveSkillAcquisition(BatchPolopt):
     def get_itr_snapshot(self, itr, samples_data):
         res = self._top_algo.get_itr_snapshot(itr, samples_data)
         res['paths'] = samples_data['paths']  # to be able to construct Trie from exported snapshot
-        # TODO? res['some more hrl stuff'] = None
+        res['hrl_policy'] = self._hrl_policy
+        res['low_algo_cls'] = self._low_algo_cls
+        res['low_algo_kwargs'] = self._low_algo_kwargs
         return res
 
     @overrides
@@ -89,18 +91,20 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         for path in paths:
             actions = path['actions'].argmax(axis=1).tolist()
             observations = path['observations']
-            path_trie.add_all_subpaths(actions,
-                                       observations,
-                                       min_length=min_length,
-                                       max_length=max_length)
+            path_trie.add_all_subpaths(
+                    actions,
+                    observations,
+                    min_length=min_length,
+                    max_length=max_length
+            )
         logger.log('Searched {} rollouts'.format(len(paths)))
 
         frequent_paths = path_trie.items(
-            action_map=action_map,
-            min_count=10,  # len(paths) * 2,   # TODO? what about this?
-            min_f_score=min_f_score,
-            max_results=max_results,
-            aggregations=aggregations
+                action_map=action_map,
+                min_count=10,  # len(paths) * 2,   # TODO? what about this?
+                min_f_score=min_f_score,
+                max_results=max_results,
+                aggregations=aggregations
         )
         logger.log('Found {} frequent paths: [actions, count f-score]'.format(len(frequent_paths)))
         for f_path in frequent_paths:

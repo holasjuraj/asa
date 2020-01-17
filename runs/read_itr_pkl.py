@@ -9,8 +9,8 @@ from garage.misc.tensor_utils import unflatten_tensors
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-path = '/home/h/holas3/garage/data/local/asa-test/itr_11.pkl'
-# path = '/home/h/holas3/garage/data/local/asa-test/itr_11_edited.pkl'
+path = '/home/h/holas3/garage/data/local/asa-test/instant_run/itr_0.pkl'
+
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 sess = tf.InteractiveSession(config=config)

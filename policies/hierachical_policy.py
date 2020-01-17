@@ -28,19 +28,19 @@ class HierarchicalPolicy(Serializable):
         :param skill_max_timesteps: maximum length of skill execution
         """
         Serializable.quick_init(self, locals())
-        self._top_policy = top_policy
-        self._skill_policy_prototype = skill_policy_prototype
-        self._skill_policies = skill_policies
-        self._num_orig_skills = len(skill_policies)
+        self.top_policy = top_policy
+        self.skill_policy_prototype = skill_policy_prototype
+        self.skill_policies = skill_policies
         self.skill_max_timesteps = skill_max_timesteps
+        num_orig_skills = len(skill_policies)
 
         # pad _skills_end_obss to align indexes with skill_policies
-        self._skills_end_obss = [None for _ in range(self._num_orig_skills)]
+        self._skills_end_obss = [None for _ in range(num_orig_skills)]
 
         # if _skill_stop_functions is not provided, default stopping function (return False) is assigned to all
         self._skill_stop_functions = skill_stop_functions if skill_stop_functions is not None \
-                                     else [lambda path: False for _ in range(self._num_orig_skills)]
-        assert(len(self._skill_stop_functions) == self._num_orig_skills)
+                                     else [lambda path: False for _ in range(num_orig_skills)]
+        assert(len(self._skill_stop_functions) == num_orig_skills)
 
         # Check top-level policy
         if not isinstance(top_policy.action_space, Discrete) \
@@ -49,14 +49,14 @@ class HierarchicalPolicy(Serializable):
 
     @property
     def num_skills(self):
-        return len(self._skill_policies)
+        return len(self.skill_policies)
 
     def get_top_policy(self):
         """
         :return: Policy of top-level agent
         :rtype: garage.policies.base.Policy
         """
-        return self._top_policy
+        return self.top_policy
 
     def get_skill_policy(self, i):
         """
@@ -64,7 +64,7 @@ class HierarchicalPolicy(Serializable):
         :return: Policy of selected skill
         :rtype: garage.policies.base.Policy
         """
-        return self._skill_policies[i]
+        return self.skill_policies[i]
 
     def get_skill_stopping_func(self, i):
         """
@@ -79,9 +79,9 @@ class HierarchicalPolicy(Serializable):
         :return: new skill policy and skill ID (index of the skill)
         :rtype: tuple(garage.policies.base.Policy, int)
         """
-        new_skill_id = len(self._skill_policies)
-        new_skill_pol = Serializable.clone(self._skill_policy_prototype)
-        self._skill_policies.append(new_skill_pol)
+        new_skill_id = len(self.skill_policies)
+        new_skill_pol = Serializable.clone(self.skill_policy_prototype)
+        self.skill_policies.append(new_skill_pol)
         self._skills_end_obss.append(np.copy(end_obss))
         self._skill_stop_functions.append(
             lambda path: path['observations'][-1] in self._skills_end_obss[new_skill_id]
