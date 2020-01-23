@@ -1,2 +1,4 @@
 #!/bin/bash
+printf  "Remote access address:\n\n    http://saturn.dai.fmph.uniba.sk:6006\n\n"
+
 tensorboard --logdir ~/garage/data/local

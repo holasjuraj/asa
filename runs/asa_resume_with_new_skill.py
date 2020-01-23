@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 
 import tensorflow as tf
-import numpy as np
-import joblib
+import dill
 import argparse
 import os
 from datetime import datetime
@@ -21,7 +20,7 @@ from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 # Parse arguments
@@ -34,7 +33,7 @@ parser.add_argument('-s', '--seed',
                     metavar='SEED', default='keep')
 args = parser.parse_args()
 
-snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/itr_0.pkl'  # for direct runs
+snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/instant_run/itr_3.pkl'  # for direct runs
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 
 
@@ -44,7 +43,8 @@ def run_task(*_):
     config.gpu_options.allow_growth = True
     with tf.Session(config=config).as_default() as tf_session:
         ## Load data from itr_N.pkl
-        saved_data = joblib.load(snapshot_file)
+        with open(snapshot_file, 'rb') as file:
+            saved_data = dill.load(file)
 
         ## Lower level environment & policies
         # Base (original) environment.
@@ -64,10 +64,7 @@ def run_task(*_):
                 # TODO! use stop-func for trained new skill policy instead of MinibotRightPolicy
                 lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
         ]
-        skill_policy_prototype = GaussianMLPPolicy(
-                env_spec=tf_base_env.spec,
-                hidden_sizes=(64, 64)
-        )
+        skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 
         ## Upper level environment & policies
         # Hierarchized environment
@@ -155,8 +152,8 @@ def run_task(*_):
 # run_task()
 
 ## Run pickled
-seed = 1
-exp_name_direct = None  # 'instant_run'
+seed = 2
+exp_name_direct = 'instant_run'
 exp_name_extra = 'Skill_integrator_from_left_skill'
 
 seed = seed if args.seed == 'keep' \

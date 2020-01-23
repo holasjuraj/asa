@@ -1,5 +1,6 @@
 import os
 import tensorflow as tf
+import dill
 import joblib
 from garage.misc.tensor_utils import unflatten_tensors
 
@@ -10,11 +11,14 @@ from garage.misc.tensor_utils import unflatten_tensors
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 path = '/home/h/holas3/garage/data/local/asa-test/instant_run/itr_0.pkl'
+path = '/home/h/holas3/garage/data/archive/asa-test/2019_10_18-12_35--Basic_run_25itrs_maps12_b5000--s1/itr_3.pkl'
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 sess = tf.InteractiveSession(config=config)
-saved_data = joblib.load(path)
+# saved_data = joblib.load(path)
+with open(path, 'rb') as file:
+    saved_data = dill.load(file)
 
 # Read weights
 old_top_policy = saved_data['policy']

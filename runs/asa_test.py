@@ -107,11 +107,11 @@ def run_task(*_):
             # Top algo kwargs
                 batch_size=5000,
                 max_path_length=100,
-                n_itr=100,
+                n_itr=25,
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
-                'batch_size': 5000,
+                'batch_size': 1000,
                 'max_path_length': 30,
                 'n_itr': 25,
                 'discount': 0.99,
@@ -136,7 +136,7 @@ def run_task(*_):
 # shutil.rmtree('/home/h/holas3/garage/data/local/asa_test/instant_run', ignore_errors=False)
 
 # Run experiment
-seed = 1
+seed = 2
 exp_name_direct = 'instant_run'
 exp_name_extra = 'Basic_run_100itrs_mapsAll_b1000'
 
