@@ -80,7 +80,10 @@ class HierarchicalPolicy(Serializable):
         :rtype: tuple(garage.policies.base.Policy, int)
         """
         new_skill_id = len(self.skill_policies)
-        new_skill_pol = Serializable.clone(self.skill_policy_prototype)
+        new_skill_pol = Serializable.clone(
+                obj=self.skill_policy_prototype,
+                name='{}Skill{}'.format(type(self.skill_policy_prototype).__name__, new_skill_id)
+        )
         self.skill_policies.append(new_skill_pol)
         self._skills_end_obss.append(np.copy(end_obss))
         self._skill_stop_functions.append(

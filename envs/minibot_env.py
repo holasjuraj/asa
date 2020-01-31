@@ -206,8 +206,8 @@ class MinibotEnv(AsaEnv, Serializable):
         """
         self.do_render_init = True
         k = tuple(np.array(start_obs, dtype='int8'))
-        s = self.states_cache[k]
-        m_idx, pos, ori = np.random.choice(list(s))
+        states = list(self.states_cache[k])
+        m_idx, pos, ori = states[np.random.randint(len(states))]
         pos = np.array(pos)
         self.current_map_idx = m_idx
         self.agent_pos = pos

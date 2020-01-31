@@ -44,7 +44,6 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         self._low_algo_cls = low_algo_cls
         self._low_algo_kwargs = low_algo_kwargs if low_algo_kwargs is not None else dict()
         self._hrl_policy = hrl_policy
-        # TODO assertion for types
 
         logger.set_tensorboard_step_key('Iteration')
 
@@ -68,7 +67,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
             make_skill, start_obss, end_obss = self.decide_new_skill(samples_data)
             if make_skill:
                 self.make_new_skill(start_obss, end_obss)
-                # TODO integrate skill into top-level policy
+                # TODO! integrate skill into top-level policy
 
     def decide_new_skill(self, samples_data):
         """
@@ -79,9 +78,9 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         """
         # TODO extract Trie parameters
         min_length = 3
-        max_length = 10
+        max_length = 5
         action_map = {0: 's', 1: 'L', 2: 'R'}
-        min_f_score = 2
+        min_f_score = 0  # DEBUG
         max_results = 10
         aggregations = ['mean']  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
 
@@ -106,21 +105,22 @@ class AdaptiveSkillAcquisition(BatchPolopt):
                 max_results=max_results,
                 aggregations=aggregations
         )
-        logger.log('Found {} frequent paths: [actions, count f-score]'.format(len(frequent_paths)))
-        for f_path in frequent_paths:
-            logger.log('    {:{pad}}\t{}\t{:.3f}'.format(
+        logger.log('Found {} frequent paths: [index, actions, count, f-score]'.format(len(frequent_paths)))
+        for i, f_path in enumerate(frequent_paths):
+            logger.log('    {:2}: {:{pad}}\t{}\t{:.3f}'.format(
+                i,
                 f_path['actions_text'],
                 f_path['count'],
                 f_path['f_score'],
                 pad=max_length))
 
         # TODO? some more clever mechanism to decide if we need a new skill.
-        # As-is, we take the subpath with highest f-score if it is grater then min_f_score. If no such subpath was
-        # found, then no skill is created.
-        # Hence Trie parameters should be max_results = 1, min_f_score = <some reasonably high number, e.g. 20>
+        #       As-is, we take the subpath with highest f-score if it is grater then min_f_score. If no such subpath was
+        #       found, then no skill is created.
+        #       Hence Trie parameters should be max_results = 1, min_f_score = <some reasonably high number, e.g. 20>
         if len(frequent_paths) == 0:
             return False, None, None
-        return False, None, None  # DEBUG delete me
+        return False, None, None  # DEBUG prevent training of new skill
         top_subpath = frequent_paths[0]
         return True, top_subpath.start_observations, top_subpath.end_observations
 
@@ -142,7 +142,10 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         la_kwargs = dict(self._low_algo_kwargs)
         # We need to clone baseline, as each skill policy must have its own instance
         baseline_to_clone = la_kwargs.get('baseline', self.baseline)
-        baseline = Serializable.clone(baseline_to_clone)    # to create blank baseline
+        baseline = Serializable.clone(  # to create blank baseline
+                obj=baseline_to_clone,
+                name='{}Skill{}'.format(type(baseline_to_clone).__name__, new_skill_id)
+        )
         la_kwargs['baseline'] = baseline
 
         algo = self._low_algo_cls(env=learning_env,

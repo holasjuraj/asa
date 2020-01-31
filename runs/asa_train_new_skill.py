@@ -30,7 +30,7 @@ parser.add_argument('-s', '--seed',
                     metavar='SEED', default='keep')
 args = parser.parse_args()
 
-snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/instant_run/itr_0.pkl'  # for direct runs
+snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/2020_01_30-14_21--Basic_run_25itrs_subpth3to5_b5000--s3/itr_8.pkl'  # for direct runs
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 
 
@@ -46,9 +46,9 @@ def run_task(*_):
         ## Construct PathTrie and find missing skill description
         # This is basically ASA.decide_new_skill
         min_length = 3
-        max_length = 10
+        max_length = 5
         action_map = {0: 's', 1: 'L', 2: 'R'}
-        min_f_score = 2
+        min_f_score = 1
         max_results = 10
         aggregations = ['mean']  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
 
@@ -72,18 +72,24 @@ def run_task(*_):
                 max_results=max_results,
                 aggregations=aggregations
         )
-        logger.log('Found {} frequent paths: [actions, count f-score]'.format(len(frequent_paths)))
-        for f_path in frequent_paths:
-            logger.log('    {:{pad}}\t{}\t{:.3f}'.format(
+        logger.log('Found {} frequent paths: [index, actions, count, f-score]'.format(len(frequent_paths)))
+        for i, f_path in enumerate(frequent_paths):
+            logger.log('    {:2}: {:{pad}}\t{}\t{:.3f}'.format(
+                i,
                 f_path['actions_text'],
                 f_path['count'],
                 f_path['f_score'],
                 pad=max_length))
 
         top_subpath = frequent_paths[0]
-        start_obss = top_subpath.start_observations
-        end_obss   = top_subpath.end_observations
+        start_obss = top_subpath['start_observations']
+        end_obss   = top_subpath['end_observations']
 
+        # DEBUG
+        print('Start obss:')
+        print(top_subpath['agg_observations']['mean'][:25].reshape(5, 5))
+        print('End obss:')
+        print(top_subpath['agg_observations']['mean'][25:].reshape(5, 5))
 
         ## Prepare elements for training
         # Environment
@@ -106,9 +112,17 @@ def run_task(*_):
         # Baseline - clone baseline specified in low_algo_kwargs, or top-algo`s baseline
         low_algo_kwargs = dict(saved_data['low_algo_kwargs'])
         baseline_to_clone = low_algo_kwargs.get('baseline', saved_data['baseline'])
-        baseline = Serializable.clone(baseline_to_clone)  # to create blank baseline
+        baseline = Serializable.clone(  # to create blank baseline
+                obj=baseline_to_clone,
+                name='{}Skill{}'.format(type(baseline_to_clone).__name__, new_skill_id)
+        )
         low_algo_kwargs['baseline'] = baseline
         low_algo_cls = saved_data['low_algo_cls']
+
+        # DEBUG
+        low_algo_kwargs['batch_size'] = 25
+        low_algo_kwargs['max_path_length'] = 10
+        low_algo_kwargs['n_itr'] = 25
 
         # Algorithm
         algo = low_algo_cls(
@@ -130,7 +144,7 @@ def run_task(*_):
 # run_task()
 
 ## Run pickled
-seed = 1
+seed = 3
 exp_name_direct = 'instant_run'
 exp_name_extra = 'Early_test_run'
 

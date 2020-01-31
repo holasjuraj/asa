@@ -20,7 +20,7 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
 # Parse arguments
@@ -136,9 +136,9 @@ def run_task(*_):
 # shutil.rmtree('/home/h/holas3/garage/data/local/asa_test/instant_run', ignore_errors=False)
 
 # Run experiment
-seed = 2
-exp_name_direct = 'instant_run'
-exp_name_extra = 'Basic_run_100itrs_mapsAll_b1000'
+seed = 3
+exp_name_direct = None  # 'instant_run'
+exp_name_extra = 'Basic_run_25itrs_subpth3to5_b5000'
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
