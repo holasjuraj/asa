@@ -283,14 +283,16 @@ class MinibotEnv(AsaEnv, Serializable):
             ax.scatter(*goal,  c='r', marker='x', s=50 )
             ax.scatter(*holes, c='k', marker='v', s=100)
             ax.add_collection(PatchCollection([Rectangle(xy-0.5, 1, 1) for xy in walls.T], color='navy'))
+            # Agent`s start
+            ax.scatter(*self.agent_pos, marker='x', s=50, c='g')
         # Plot last move
         move = np.array([self.render_prev_pos, self.agent_pos]).T
         plt.scatter(*move, marker='.', s=6, c='k')
-        plt.plot(*move, '-', c=self.map_colors[self.current_map_idx])
+        plt.plot(*move, '-', c=self.map_colors[self.current_map_idx % len(self.map_colors)])
         self.render_prev_pos = self.agent_pos
 
         # Choose output method
-        mode = 'rgb-array'
+        mode = 'rgb-array'  # DEBUG
         if mode == 'human':
             # plt.show(block=False)
             raise NotImplementedError
@@ -309,6 +311,7 @@ class MinibotEnv(AsaEnv, Serializable):
 
     # noinspection PyMethodMayBeStatic
     def save_rendered_plot(self):
+        # plt.scatter(*self.agent_pos, marker='x', s=50, c='r')  # DEBUG to mark agent`s end position
         directory = logger.get_snapshot_dir()
         if directory is None:
             directory = '~/garage/data/local/asa/instant-run'

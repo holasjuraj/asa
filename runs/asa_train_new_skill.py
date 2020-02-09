@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import tensorflow as tf
-import joblib
+import dill
 import argparse
 import os
 from datetime import datetime
@@ -17,7 +17,7 @@ from garage.misc import logger
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 # Parse arguments
@@ -40,7 +40,8 @@ def run_task(*_):
     config.gpu_options.allow_growth = True
     with tf.Session(config=config).as_default() as tf_session:
         ## Load data from itr_N.pkl
-        saved_data = joblib.load(snapshot_file)
+        with open(snapshot_file, 'rb') as file:
+            saved_data = dill.load(file)
 
 
         ## Construct PathTrie and find missing skill description
@@ -85,12 +86,6 @@ def run_task(*_):
         start_obss = top_subpath['start_observations']
         end_obss   = top_subpath['end_observations']
 
-        # DEBUG
-        print('Start obss:')
-        print(top_subpath['agg_observations']['mean'][:25].reshape(5, 5))
-        print('End obss:')
-        print(top_subpath['agg_observations']['mean'][25:].reshape(5, 5))
-
         ## Prepare elements for training
         # Environment
         base_env = saved_data['env'].env.env  # <NormalizedEnv<MinibotEnv instance>>
@@ -119,10 +114,13 @@ def run_task(*_):
         low_algo_kwargs['baseline'] = baseline
         low_algo_cls = saved_data['low_algo_cls']
 
-        # DEBUG
-        low_algo_kwargs['batch_size'] = 25
-        low_algo_kwargs['max_path_length'] = 10
-        low_algo_kwargs['n_itr'] = 25
+        # DEBUG set custom training params
+        low_algo_kwargs['batch_size'] = 2500
+        low_algo_kwargs['max_path_length'] = 50
+        low_algo_kwargs['n_itr'] = 500
+        low_algo_kwargs['force_batch_sampler'] = True
+        # low_algo_kwargs['plot'] = True  # DEBUG to plot demo rollout after each iteration
+        logger.set_snapshot_mode('none')
 
         # Algorithm
         algo = low_algo_cls(
@@ -134,6 +132,7 @@ def run_task(*_):
 
         ## Train new skill
         with logger.prefix('Skill {} | '.format(new_skill_id)):
+            logger.set_tensorboard_step_key('Iteration')
             algo.train(sess=tf_session)
 
 
@@ -146,7 +145,7 @@ def run_task(*_):
 ## Run pickled
 seed = 3
 exp_name_direct = 'instant_run'
-exp_name_extra = 'Early_test_run'
+exp_name_extra = 'Skill_from_s3_itr8_path0_500itrs_len50_PartialMatch95'
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
@@ -161,7 +160,7 @@ run_experiment(
         exp_prefix='asa-train-new-skill',
         exp_name=exp_name_direct or \
                  (datetime.now().strftime('%Y_%m_%d-%H_%M')
-                  + '--after_' + snapshot_name
+                  # + '--after_' + snapshot_name
                   + (('--' + exp_name_extra) if exp_name_extra else '')
                   + (('--s' + str(seed)) if seed else '')
                  ),
@@ -170,5 +169,6 @@ run_experiment(
         # Snapshot information
         snapshot_mode="all",
         # Specifies the seed for the experiment  (random seed if None)
-        seed=seed
+        seed=seed,
+        # plot=True  # DEBUG to plot demo rollout after each iteration
 )
