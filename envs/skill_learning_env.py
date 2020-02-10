@@ -42,7 +42,7 @@ class SkillLearningEnv(Wrapper, Serializable):
     @overrides
     def step(self, action):
         obs, _, term, info = self.env.step(action)
-        # TODO? terminate if *any* end_obs is reached, or end_obs belonging to start_obs we started from?
+        # Terminate if agent reached end_obs belonging to start_obs it started from
         end_obs = self._end_obss[self.current_obs_idx, :]
 
         # a) Full match
@@ -58,50 +58,14 @@ class SkillLearningEnv(Wrapper, Serializable):
         # skill_term = diff < 0.1
         # surr_reward = 1 - diff
 
-
-        # DEBUG to store actions and success of this rollout
-        self.actions.append(action)
-        self.successful = skill_term
-        # /DEBUG
         surr_term = term or skill_term
         return obs, surr_reward, surr_term, info
 
-    # DEBUG to log start_obs, end_obs and action of plotted rollout
-    def save_rendered_plot(self):
-        msg = '\n================================\n'
-        msg += 'SUCCESSFUL' if self.successful else 'FAILED\n'
-        msg += 'Start observation (with orientation {}°):\n'.format(
-            (self.env.env.agent_ori * 180 / np.pi) % 360
-        )
-        msg += str(self._start_obss[self.current_obs_idx, :].reshape(5, 5)[::-1])
-        msg += '\nEnd observation:\n'
-        msg += str(self._end_obss[self.current_obs_idx, :].reshape(5, 5)[::-1])
-
-        a = np.array(self.actions)
-        msg += '\n\nRaw actions:\n'
-        msg += str(a)
-        a = np.clip(np.round(a * 1.5), a_min=-1, a_max=1)
-        msg += '\n\nDiscretized actions:\n'
-        msg += str(a)
-        msg += '\n================================'
-        logger.log(msg)
-        self.env.unwrapped.save_rendered_plot()
-    # /DEBUG
 
     @overrides
     def reset(self, **kwargs):
         self.current_obs_idx = np.random.randint(self._num_obs)
         start_obs = self._start_obss[self.current_obs_idx, :]
-        # DEBUG to store actions of this rollout
-        self.actions = []
-        result = AsaEnv.reset_to_state_wrapped(
-                env=self.env,
-                start_obs=start_obs,
-                **kwargs
-        )
-        self.start_ori = self.env.env.agent_ori
-        return result
-        # /DEBUG
         return AsaEnv.reset_to_state_wrapped(
                 env=self.env,
                 start_obs=start_obs,

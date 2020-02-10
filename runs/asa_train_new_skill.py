@@ -118,9 +118,10 @@ def run_task(*_):
         low_algo_kwargs['batch_size'] = 2500
         low_algo_kwargs['max_path_length'] = 50
         low_algo_kwargs['n_itr'] = 500
-        low_algo_kwargs['force_batch_sampler'] = True
-        # low_algo_kwargs['plot'] = True  # DEBUG to plot demo rollout after each iteration
+        low_algo_kwargs['force_batch_sampler'] = False
+        low_algo_kwargs['plot'] = True  # DEBUG to plot demo rollout after each iteration
         logger.set_snapshot_mode('none')
+        skill_learning_env.unwrapped.do_caching = True
 
         # Algorithm
         algo = low_algo_cls(
@@ -144,8 +145,8 @@ def run_task(*_):
 
 ## Run pickled
 seed = 3
-exp_name_direct = 'instant_run'
-exp_name_extra = 'Skill_from_s3_itr8_path0_500itrs_len50_PartialMatch95'
+exp_name_direct = None  # 'instant_run'
+exp_name_extra = 'Skill_from_s3_itr8_path0_500itrs_len50_VectorisedSampler_Cache'
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
@@ -170,5 +171,5 @@ run_experiment(
         snapshot_mode="all",
         # Specifies the seed for the experiment  (random seed if None)
         seed=seed,
-        # plot=True  # DEBUG to plot demo rollout after each iteration
+        plot=True  # DEBUG to plot demo rollout after each iteration
 )

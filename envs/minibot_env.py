@@ -123,6 +123,7 @@ class MinibotEnv(AsaEnv, Serializable):
         self.max_action_distance = 0.2
         self.do_render_init = True
         self.render_prev_pos = np.zeros(2)
+        self.do_caching = True
 
         self.current_map_idx = None
         self.agent_pos = None
@@ -242,14 +243,16 @@ class MinibotEnv(AsaEnv, Serializable):
             reward = 1
         else:
             raise NotImplementedError
-        # Cache observation
 
-        k = tuple(np.array(obs, dtype='int8'))
-        v = (self.current_map_idx, tuple(self.agent_pos), self.agent_ori)
-        if k not in self.states_cache:
-            self.states_cache[k] = {v}
-        else:
-            self.states_cache[k].add(v)
+        # Cache observation
+        if self.do_caching:
+            k = tuple(np.array(obs, dtype='int8'))
+            v = (self.current_map_idx, tuple(self.agent_pos), self.agent_ori)
+            if k not in self.states_cache:
+                self.states_cache[k] = {v}
+            else:
+                self.states_cache[k].add(v)
+
         # Return observation and others
         return Step(observation=obs, reward=reward, done=done,
                     agent_pos=self.agent_pos, agent_ori=self.agent_ori,
@@ -311,7 +314,7 @@ class MinibotEnv(AsaEnv, Serializable):
 
     # noinspection PyMethodMayBeStatic
     def save_rendered_plot(self):
-        # plt.scatter(*self.agent_pos, marker='x', s=50, c='r')  # DEBUG to mark agent`s end position
+        plt.scatter(*self.agent_pos, marker='x', s=50, c='r')  # DEBUG to mark agent`s end position
         directory = logger.get_snapshot_dir()
         if directory is None:
             directory = '~/garage/data/local/asa/instant-run'
