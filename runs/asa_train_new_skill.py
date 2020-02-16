@@ -5,6 +5,7 @@ import dill
 import argparse
 import os
 from datetime import datetime
+import numpy as np
 
 
 from sandbox.asa.envs import HierarchizedEnv, SkillLearningEnv
@@ -86,6 +87,8 @@ def run_task(*_):
         start_obss = top_subpath['start_observations']
         end_obss   = top_subpath['end_observations']
 
+
+
         ## Prepare elements for training
         # Environment
         base_env = saved_data['env'].env.env  # <NormalizedEnv<MinibotEnv instance>>
@@ -114,30 +117,52 @@ def run_task(*_):
         low_algo_kwargs['baseline'] = baseline
         low_algo_cls = saved_data['low_algo_cls']
 
-        # DEBUG set custom training params
+        # DEBUG set custom training params (should`ve been set in asa_test)
         low_algo_kwargs['batch_size'] = 2500
         low_algo_kwargs['max_path_length'] = 50
-        low_algo_kwargs['n_itr'] = 500
-        low_algo_kwargs['force_batch_sampler'] = False
-        low_algo_kwargs['plot'] = True  # DEBUG to plot demo rollout after each iteration
-        logger.set_snapshot_mode('none')
-        skill_learning_env.unwrapped.do_caching = True
+        low_algo_kwargs['n_itr'] = 50
 
         # Algorithm
         algo = low_algo_cls(
-                env=skill_learning_env,
-                policy=new_skill_policy,
-                **low_algo_kwargs
+            env=skill_learning_env,
+            policy=new_skill_policy,
+            **low_algo_kwargs
         )
+
+        # Logger parameters
+        logger_snapshot_dir_before = logger.get_snapshot_dir()
+        logger_snapshot_mode_before = logger.get_snapshot_mode()
+        logger_snapshot_gap_before = logger.get_snapshot_gap()
+        # No need to change snapshot dir in this script, it is used in ASA-algo.make_new_skill()
+        # logger.set_snapshot_dir(os.path.join(
+        #         logger_snapshot_dir_before,
+        #         'skill{}'.format(new_skill_id)
+        # ))
+        logger.set_snapshot_mode('gap')
+        logger.set_snapshot_gap(max(1, np.floor(low_algo_kwargs['n_itr'] / 10)))
+        logger.set_tensorboard_step_key('Iteration')
 
 
         ## Train new skill
         with logger.prefix('Skill {} | '.format(new_skill_id)):
-            logger.set_tensorboard_step_key('Iteration')
             algo.train(sess=tf_session)
 
 
-        ## TODO dump hrl_policy / [new_skill_policy, new_skill_stop_func] / ...
+
+        ## Save new policy and its end_obss (we`ll construct skill stopping function
+        #  from them manually in asa_resume_with_new_skill.py)
+        out_file = os.path.join(logger.get_snapshot_dir(), 'final.pkl')
+        with open(out_file, 'wb') as file:
+            out_data = {
+                    'policy': new_skill_policy,
+                    'end_obss': hrl_policy._skills_end_obss[new_skill_id]
+            }
+            dill.dump(out_data, file)
+
+        # Restore logger parameters
+        logger.set_snapshot_dir(logger_snapshot_dir_before)
+        logger.set_snapshot_mode(logger_snapshot_mode_before)
+        logger.set_snapshot_gap(logger_snapshot_gap_before)
 
 
 ## Run directly
@@ -145,7 +170,7 @@ def run_task(*_):
 
 ## Run pickled
 seed = 3
-exp_name_direct = None  # 'instant_run'
+exp_name_direct = 'instant_run'
 exp_name_extra = 'Skill_from_s3_itr8_path0_500itrs_len50_VectorisedSampler_Cache'
 
 seed = seed if args.seed == 'keep' \
@@ -171,5 +196,4 @@ run_experiment(
         snapshot_mode="all",
         # Specifies the seed for the experiment  (random seed if None)
         seed=seed,
-        plot=True  # DEBUG to plot demo rollout after each iteration
 )

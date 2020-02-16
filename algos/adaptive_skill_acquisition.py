@@ -1,3 +1,6 @@
+import os
+import numpy as np
+
 from garage.tf.algos import BatchPolopt
 from garage.tf.envs import TfEnv
 from garage.core import Serializable
@@ -54,6 +57,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
     @overrides
     def get_itr_snapshot(self, itr, samples_data):
         res = self._top_algo.get_itr_snapshot(itr, samples_data)
+        # TODO? only include path actions and observations to snapshot in order to speed up saving
         res['paths'] = samples_data['paths']  # to be able to construct Trie from exported snapshot
         res['hrl_policy'] = self._hrl_policy
         res['low_algo_cls'] = self._low_algo_cls
@@ -128,19 +132,23 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         """
         Create and train a new skill based on given start and end observations
         """
-        new_skill_pol, new_skill_id = self._hrl_policy.create_new_skill(end_obss)  # blank policy to be trained
-
-        learning_env = TfEnv(
-                        SkillLearningEnv(
-                            # base env that was wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
-                            env=self.env.env,
-                            start_obss=start_obss,
-                            end_obss=end_obss
-                        )
+        ## Prepare elements for training
+        # Environment
+        skill_learning_env = TfEnv(
+                SkillLearningEnv(
+                    # base env that was wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
+                    env=self.env.env,  # TODO! how much do we want to unwrap the environment?
+                    start_obss=start_obss,
+                    end_obss=end_obss
+                )
         )
 
+        # Skill policy
+        new_skill_pol, new_skill_id = self._hrl_policy.create_new_skill(end_obss)  # blank policy to be trained
+
+        # Baseline - clone baseline specified in low_algo_kwargs, or top-algo`s baseline
+        #   We need to clone baseline, as each skill policy must have its own instance
         la_kwargs = dict(self._low_algo_kwargs)
-        # We need to clone baseline, as each skill policy must have its own instance
         baseline_to_clone = la_kwargs.get('baseline', self.baseline)
         baseline = Serializable.clone(  # to create blank baseline
                 obj=baseline_to_clone,
@@ -148,9 +156,30 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         )
         la_kwargs['baseline'] = baseline
 
-        algo = self._low_algo_cls(env=learning_env,
-                                  policy=new_skill_pol,
-                                  **la_kwargs)
+        # Algorithm
+        algo = self._low_algo_cls(
+                env=skill_learning_env,
+                policy=new_skill_pol,
+                **la_kwargs
+        )
 
+        # Logger parameters
+        logger_snapshot_dir_before = logger.get_snapshot_dir()
+        logger_snapshot_mode_before = logger.get_snapshot_mode()
+        logger_snapshot_gap_before = logger.get_snapshot_gap()
+        logger.set_snapshot_dir(os.path.join(
+                logger_snapshot_dir_before,
+                'skill{}'.format(new_skill_id)
+        ))
+        logger.set_snapshot_mode('gap')
+        logger.set_snapshot_gap(max(1, np.floor(la_kwargs['n_itr'] / 10)))
+        logger.set_tensorboard_step_key('Iteration')
+
+        # Train new skill
         with logger.prefix('Skill {} | '.format(new_skill_id)):
             algo.train()
+
+        # Restore logger parameters
+        logger.set_snapshot_dir(logger_snapshot_dir_before)
+        logger.set_snapshot_mode(logger_snapshot_mode_before)
+        logger.set_snapshot_gap(logger_snapshot_gap_before)
