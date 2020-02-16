@@ -27,14 +27,18 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 parser = argparse.ArgumentParser(description='Resume ASA training with new skill')
 parser.add_argument('-f', '--file',
                     help='path to snapshot file (itr_N.pkl) to start from', metavar='FILE')
+parser.add_argument('-p', '--skill-policy',
+                    help='path to file with new skill policy', metavar='FILE')
 parser.add_argument('-s', '--seed',
                     help='specific randomization seed, "random" for random seed, '
                          '"keep" to keep seed specified in training script. Default: "keep"',
                     metavar='SEED', default='keep')
 args = parser.parse_args()
 
-snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/instant_run/itr_3.pkl'  # for direct runs
+snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/2020_01_30-14_21--Basic_run_25itrs_subpth3to5_b5000--s3/itr_8.pkl'  # for direct runs
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
+new_skill_policy_file = args.skill_policy or '/home/h/holas3/garage/data/local/asa-train-new-skill/instant_run/final.pkl'  # for direct runs
+
 
 
 def run_task(*_):
@@ -45,6 +49,13 @@ def run_task(*_):
         ## Load data from itr_N.pkl
         with open(snapshot_file, 'rb') as file:
             saved_data = dill.load(file)
+
+        ## Load data of new skill
+        with open(new_skill_policy_file, 'rb') as file:
+            new_skill_data = dill.load(file)
+        new_skill_policy = new_skill_data['policy']
+        new_skill_end_obss = new_skill_data['end_obss']
+        new_skill_stop_func = lambda path: path['observations'][-1] in new_skill_end_obss
 
         ## Lower level environment & policies
         # Base (original) environment.
@@ -57,12 +68,14 @@ def run_task(*_):
                 MinibotLeftPolicy(env_spec=base_env.spec),
                 # TODO! use trained new skill policy instead of MinibotRightPolicy
                 MinibotRightPolicy(env_spec=base_env.spec)
+                # new_skill_policy
         ]
         trained_skill_policies_stop_funcs = [
                 lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
                 lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
                 # TODO! use stop-func for trained new skill policy instead of MinibotRightPolicy
                 lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
+                # new_skill_stop_func
         ]
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 
@@ -152,9 +165,9 @@ def run_task(*_):
 # run_task()
 
 ## Run pickled
-seed = 2
+seed = 3
 exp_name_direct = 'instant_run'
-exp_name_extra = 'Skill_integrator_from_left_skill'
+exp_name_extra = 'New_skill_script_With_MinibotRight'
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
