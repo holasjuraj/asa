@@ -53,7 +53,8 @@ class HierarchizedEnv(Wrapper, Serializable):
                                    max_path_length=self.hrl_policy.skill_max_timesteps,
                                    reset_start_rollout=False  # do not reset the env, continue from current state
                                    )
-        # TODO! next_obs will be non-normalized!
+        # TODO! next_obs will be non-normalized
+        #       Re: use AsaEnv.get_current_obs_wrapped
         next_obs = AsaEnv.unwrap_to_asa_env(self.env).get_current_obs()
         reward = np.sum(skill_path['rewards'])
         term = skill_path['terminated'][-1]

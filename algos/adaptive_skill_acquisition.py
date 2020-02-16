@@ -1,3 +1,6 @@
+import os
+import numpy as np
+
 from garage.tf.algos import BatchPolopt
 from garage.tf.envs import TfEnv
 from garage.core import Serializable
@@ -44,7 +47,6 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         self._low_algo_cls = low_algo_cls
         self._low_algo_kwargs = low_algo_kwargs if low_algo_kwargs is not None else dict()
         self._hrl_policy = hrl_policy
-        # TODO assertion for types
 
         logger.set_tensorboard_step_key('Iteration')
 
@@ -55,7 +57,11 @@ class AdaptiveSkillAcquisition(BatchPolopt):
     @overrides
     def get_itr_snapshot(self, itr, samples_data):
         res = self._top_algo.get_itr_snapshot(itr, samples_data)
-        # TODO? res['some hrl stuff'] = None
+        # TODO? only include path actions and observations to snapshot in order to speed up saving
+        res['paths'] = samples_data['paths']  # to be able to construct Trie from exported snapshot
+        res['hrl_policy'] = self._hrl_policy
+        res['low_algo_cls'] = self._low_algo_cls
+        res['low_algo_kwargs'] = self._low_algo_kwargs
         return res
 
     @overrides
@@ -65,7 +71,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
             make_skill, start_obss, end_obss = self.decide_new_skill(samples_data)
             if make_skill:
                 self.make_new_skill(start_obss, end_obss)
-                # TODO integrate skill into top-level policy
+                # TODO! integrate skill into top-level policy
 
     def decide_new_skill(self, samples_data):
         """
@@ -76,9 +82,9 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         """
         # TODO extract Trie parameters
         min_length = 3
-        max_length = 10
+        max_length = 5
         action_map = {0: 's', 1: 'L', 2: 'R'}
-        min_f_score = 2
+        min_f_score = 0  # DEBUG
         max_results = 10
         aggregations = ['mean']  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
 
@@ -88,34 +94,37 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         for path in paths:
             actions = path['actions'].argmax(axis=1).tolist()
             observations = path['observations']
-            path_trie.add_all_subpaths(actions,
-                                       observations,
-                                       min_length=min_length,
-                                       max_length=max_length)
+            path_trie.add_all_subpaths(
+                    actions,
+                    observations,
+                    min_length=min_length,
+                    max_length=max_length
+            )
         logger.log('Searched {} rollouts'.format(len(paths)))
 
         frequent_paths = path_trie.items(
-            action_map=action_map,
-            min_count=10,  # len(paths) * 2,   # TODO? what about this?
-            min_f_score=min_f_score,
-            max_results=max_results,
-            aggregations=aggregations
+                action_map=action_map,
+                min_count=10,  # len(paths) * 2,   # TODO? what about this?
+                min_f_score=min_f_score,
+                max_results=max_results,
+                aggregations=aggregations
         )
-        logger.log('Found {} frequent paths: [actions, count f-score]'.format(len(frequent_paths)))
-        for f_path in frequent_paths:
-            logger.log('    {:{pad}}\t{}\t{:.3f}'.format(
+        logger.log('Found {} frequent paths: [index, actions, count, f-score]'.format(len(frequent_paths)))
+        for i, f_path in enumerate(frequent_paths):
+            logger.log('    {:2}: {:{pad}}\t{}\t{:.3f}'.format(
+                i,
                 f_path['actions_text'],
                 f_path['count'],
                 f_path['f_score'],
                 pad=max_length))
 
         # TODO? some more clever mechanism to decide if we need a new skill.
-        # As-is, we take the subpath with highest f-score if it is grater then min_f_score. If no such subpath was
-        # found, then no skill is created.
-        # Hence Trie parameters should be max_results = 1, min_f_score = <some reasonably high number, e.g. 20>
+        #       As-is, we take the subpath with highest f-score if it is grater then min_f_score. If no such subpath was
+        #       found, then no skill is created.
+        #       Hence Trie parameters should be max_results = 1, min_f_score = <some reasonably high number, e.g. 20>
         if len(frequent_paths) == 0:
             return False, None, None
-        return False, None, None  # DEBUG delete me
+        return False, None, None  # DEBUG prevent training of new skill
         top_subpath = frequent_paths[0]
         return True, top_subpath.start_observations, top_subpath.end_observations
 
@@ -123,26 +132,54 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         """
         Create and train a new skill based on given start and end observations
         """
-        new_skill_pol, new_skill_id = self._hrl_policy.create_new_skill(end_obss)  # blank policy to be trained
-
-        learning_env = TfEnv(
-                        SkillLearningEnv(
-                            # base env that was wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
-                            env=self.env.env,
-                            start_obss=start_obss,
-                            end_obss=end_obss
-                        )
+        ## Prepare elements for training
+        # Environment
+        skill_learning_env = TfEnv(
+                SkillLearningEnv(
+                    # base env that was wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
+                    env=self.env.env,  # TODO! how much do we want to unwrap the environment?
+                    start_obss=start_obss,
+                    end_obss=end_obss
+                )
         )
 
+        # Skill policy
+        new_skill_pol, new_skill_id = self._hrl_policy.create_new_skill(end_obss)  # blank policy to be trained
+
+        # Baseline - clone baseline specified in low_algo_kwargs, or top-algo`s baseline
+        #   We need to clone baseline, as each skill policy must have its own instance
         la_kwargs = dict(self._low_algo_kwargs)
-        # We need to clone baseline, as each skill policy must have its own instance
         baseline_to_clone = la_kwargs.get('baseline', self.baseline)
-        baseline = Serializable.clone(baseline_to_clone)    # to create blank baseline
+        baseline = Serializable.clone(  # to create blank baseline
+                obj=baseline_to_clone,
+                name='{}Skill{}'.format(type(baseline_to_clone).__name__, new_skill_id)
+        )
         la_kwargs['baseline'] = baseline
 
-        algo = self._low_algo_cls(env=learning_env,
-                                  policy=new_skill_pol,
-                                  **la_kwargs)
+        # Algorithm
+        algo = self._low_algo_cls(
+                env=skill_learning_env,
+                policy=new_skill_pol,
+                **la_kwargs
+        )
 
+        # Logger parameters
+        logger_snapshot_dir_before = logger.get_snapshot_dir()
+        logger_snapshot_mode_before = logger.get_snapshot_mode()
+        logger_snapshot_gap_before = logger.get_snapshot_gap()
+        logger.set_snapshot_dir(os.path.join(
+                logger_snapshot_dir_before,
+                'skill{}'.format(new_skill_id)
+        ))
+        logger.set_snapshot_mode('gap')
+        logger.set_snapshot_gap(max(1, np.floor(la_kwargs['n_itr'] / 10)))
+        logger.set_tensorboard_step_key('Iteration')
+
+        # Train new skill
         with logger.prefix('Skill {} | '.format(new_skill_id)):
             algo.train()
+
+        # Restore logger parameters
+        logger.set_snapshot_dir(logger_snapshot_dir_before)
+        logger.set_snapshot_mode(logger_snapshot_mode_before)
+        logger.set_snapshot_gap(logger_snapshot_gap_before)

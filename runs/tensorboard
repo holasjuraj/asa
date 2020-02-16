@@ -1,2 +1,30 @@
 #!/bin/bash
-tensorboard --logdir ~/garage/data/local
+# Start TensorBoard from ~/garage/data/local or other specified folder.
+
+usage="
+Usage: $(basename $0) [-a|-d dir] [-p port]
+Start TensorBoard from ~/garage/data/local folder.
+
+Options:
+  -a         read from ~/garage/data/archive, use port 6007
+  -d dir     read from specified direcory
+  -p port    use this port number, default=6006
+"
+
+# Check arguments
+dir="$HOME/garage/data/local"
+port="6006"
+while getopts ad:p: option; do
+  case "${option}" in
+    a) dir="$HOME/garage/data/archive"; port="6007" ;;
+    d) dir=${OPTARG}; ;;
+    p) port=${OPTARG}; ;;
+    *) echo "$usage" ; exit 1; ;;
+  esac
+done
+
+# Print URL
+printf  "Remote access address:\n\n    http://saturn.dai.fmph.uniba.sk:%s\n\n" $port
+
+# Start TensorBoard
+tensorboard --logdir $dir --port $port
