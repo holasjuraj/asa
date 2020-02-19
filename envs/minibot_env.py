@@ -16,7 +16,6 @@ from garage.core.serializable import Serializable
 from garage.misc.overrides import overrides
 from garage.misc import logger
 
-_states_cache = {}
 
 
 class MinibotEnv(AsaEnv, Serializable):
@@ -98,22 +97,33 @@ class MinibotEnv(AsaEnv, Serializable):
 
 
     # noinspection PyMissingConstructor
-    def __init__(self, radar_range=2, radar_resolution=1, discretized=True, use_maps='all'):
+    def __init__(self,
+                 radar_range=2,
+                 radar_resolution=1,
+                 discretized=True,
+                 use_maps='all',
+                 states_cache=None):
         """
         :param radar_range: how many measurements does 'radar' make to each of 4 sides (and combinations)
         :param radar_resolution: distance between two measurements of agent`s 'radar'
         :param discretized: discretized actions from {<-1,-0.33> , <-0.33,0.33> , <0.33,1>} to [-1, 0, 1]
         :param use_maps: which maps to use, list of indexes or 'all'
+        :param states_cache: pre-populated cache to use (observation -> set of states)
         """
         Serializable.quick_init(self, locals())
 
         self.radar_range = radar_range
         self.radar_resolution = radar_resolution
         self.discretized = discretized
+        if states_cache is None:
+            self.states_cache = dict()
+        else:
+            self.states_cache = states_cache
         self.agent_width = 2.4/np.pi
         self.max_action_distance = 0.2
         self.do_render_init = True
         self.render_prev_pos = np.zeros(2)
+        self.do_caching = True
 
         self.current_map_idx = None
         self.agent_pos = None
@@ -197,8 +207,8 @@ class MinibotEnv(AsaEnv, Serializable):
         """
         self.do_render_init = True
         k = tuple(np.array(start_obs, dtype='int8'))
-        s = _states_cache[k]
-        m_idx, pos, ori = np.random.choice(list(s))
+        states = list(self.states_cache[k])
+        m_idx, pos, ori = states[np.random.randint(len(states))]
         pos = np.array(pos)
         self.current_map_idx = m_idx
         self.agent_pos = pos
@@ -233,14 +243,16 @@ class MinibotEnv(AsaEnv, Serializable):
             reward = 1
         else:
             raise NotImplementedError
+
         # Cache observation
-        global _states_cache
-        k = tuple(np.array(obs, dtype='int8'))
-        v = (self.current_map_idx, tuple(self.agent_pos), self.agent_ori)
-        if k not in _states_cache:
-            _states_cache[k] = {v}
-        else:
-            _states_cache[k].add(v)
+        if self.do_caching:
+            k = tuple(np.array(obs, dtype='int8'))
+            v = (self.current_map_idx, tuple(self.agent_pos), self.agent_ori)
+            if k not in self.states_cache:
+                self.states_cache[k] = {v}
+            else:
+                self.states_cache[k].add(v)
+
         # Return observation and others
         return Step(observation=obs, reward=reward, done=done,
                     agent_pos=self.agent_pos, agent_ori=self.agent_ori,
@@ -274,14 +286,16 @@ class MinibotEnv(AsaEnv, Serializable):
             ax.scatter(*goal,  c='r', marker='x', s=50 )
             ax.scatter(*holes, c='k', marker='v', s=100)
             ax.add_collection(PatchCollection([Rectangle(xy-0.5, 1, 1) for xy in walls.T], color='navy'))
+            # Agent`s start
+            ax.scatter(*self.agent_pos, marker='x', s=50, c='g')
         # Plot last move
         move = np.array([self.render_prev_pos, self.agent_pos]).T
         plt.scatter(*move, marker='.', s=6, c='k')
-        plt.plot(*move, '-', c=self.map_colors[self.current_map_idx])
+        plt.plot(*move, '-', c=self.map_colors[self.current_map_idx % len(self.map_colors)])
         self.render_prev_pos = self.agent_pos
 
         # Choose output method
-        mode = 'rgb-array'
+        mode = 'rgb-array'  # DEBUG
         if mode == 'human':
             # plt.show(block=False)
             raise NotImplementedError
@@ -300,6 +314,7 @@ class MinibotEnv(AsaEnv, Serializable):
 
     # noinspection PyMethodMayBeStatic
     def save_rendered_plot(self):
+        plt.scatter(*self.agent_pos, marker='x', s=50, c='r')  # DEBUG to mark agent`s end position
         directory = logger.get_snapshot_dir()
         if directory is None:
             directory = '~/garage/data/local/asa/instant-run'
