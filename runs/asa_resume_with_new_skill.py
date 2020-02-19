@@ -102,7 +102,7 @@ def run_task(*_):
         skill_integrator = CategoricalMLPSkillIntegrator()
         ntp_weight_values = skill_integrator.integrate_skill(
                 old_policy_weights=otp_weights,
-                method=skill_integrator.Method.OLD_SKILL_AVG
+                method=skill_integrator.Method.START_OBSS_SKILLS_AVG
         )
 
         # 4) Create new policy and randomly initialize its weights
