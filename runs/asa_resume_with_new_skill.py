@@ -29,6 +29,10 @@ parser.add_argument('-f', '--file',
                     help='path to snapshot file (itr_N.pkl) to start from', metavar='FILE')
 parser.add_argument('-p', '--skill-policy',
                     help='path to file with new skill policy', metavar='FILE')
+parser.add_argument('-i', '--integration-method',
+                    help='integration method to be used, number (index of method) or '
+                         '"keep" to keep method specified in training script. Default: "keep"',
+                    metavar='METHOD', default='keep')
 parser.add_argument('-s', '--seed',
                     help='specific randomization seed, "random" for random seed, '
                          '"keep" to keep seed specified in training script. Default: "keep"',
@@ -54,8 +58,8 @@ def run_task(*_):
         with open(new_skill_policy_file, 'rb') as file:
             new_skill_data = dill.load(file)
         new_skill_policy = new_skill_data['policy']
-        new_skill_end_obss = new_skill_data['end_obss']
-        new_skill_stop_func = lambda path: path['observations'][-1] in new_skill_end_obss
+        new_skill_subpath = new_skill_data['subpath']
+        new_skill_stop_func = lambda path: path['observations'][-1] in new_skill_subpath['end_observations']
 
         ## Lower level environment & policies
         # Base (original) environment.
@@ -66,16 +70,14 @@ def run_task(*_):
         trained_skill_policies = [
                 MinibotForwardPolicy(env_spec=base_env.spec),
                 MinibotLeftPolicy(env_spec=base_env.spec),
-                # TODO! use trained new skill policy instead of MinibotRightPolicy
-                MinibotRightPolicy(env_spec=base_env.spec)
-                # new_skill_policy
+                new_skill_policy
+                # MinibotRightPolicy(env_spec=base_env.spec)  # DEBUG
         ]
         trained_skill_policies_stop_funcs = [
                 lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
                 lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
-                # TODO! use stop-func for trained new skill policy instead of MinibotRightPolicy
-                lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
-                # new_skill_stop_func
+                new_skill_stop_func
+                # lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90° # DEBUG
         ]
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 
@@ -102,7 +104,12 @@ def run_task(*_):
         skill_integrator = CategoricalMLPSkillIntegrator()
         ntp_weight_values = skill_integrator.integrate_skill(
                 old_policy_weights=otp_weights,
-                method=skill_integrator.Method.START_OBSS_SKILLS_AVG
+                method=skill_integration_method,
+                # Specific parameters for START_OBSS_SKILLS_AVG
+                subpath_start_obss=new_skill_subpath['start_observations'],
+                top_policy=old_top_policy,
+                # Specific parameters for SUBPATH_SKILLS_AVG, SUBPATH_SKILLS_SMOOTH_AVG and SUBPATH_FIRST_SKILL
+                subpath_actions=new_skill_subpath['actions']
         )
 
         # 4) Create new policy and randomly initialize its weights
@@ -166,8 +173,14 @@ def run_task(*_):
 
 ## Run pickled
 seed = 3
-exp_name_direct = 'instant_run'
-exp_name_extra = 'New_skill_script_With_MinibotRight'
+exp_name_direct = None  # 'instant_run'
+exp_name_extra = 'New_skill_script_With_policy_150itrs'
+
+skill_integration_method = CategoricalMLPSkillIntegrator.Method.START_OBSS_SKILLS_AVG
+skill_integration_method = \
+        skill_integration_method if args.integration_method == 'keep' \
+        else CategoricalMLPSkillIntegrator.get_method_by_index(
+        int(args.integration_method))
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
@@ -182,8 +195,9 @@ run_experiment(
         exp_prefix='asa-resume-with-new-skill',
         exp_name=exp_name_direct or \
                  (datetime.now().strftime('%Y_%m_%d-%H_%M')
-                  + '--resumed_from_' + snapshot_name
                   + (('--' + exp_name_extra) if exp_name_extra else '')
+                  + '--resumed_from_' + snapshot_name
+                  + '--integ_' + skill_integration_method
                   + (('--s' + str(seed)) if seed else '')
                  ),
         # Number of parallel workers for sampling

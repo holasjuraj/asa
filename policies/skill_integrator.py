@@ -53,17 +53,17 @@ class CategoricalMLPSkillIntegrator(SkillIntegrator):
         out_w = new_weights[-2]
         out_b = new_weights[-1]
 
-        if method is self.Method.RANDOM:
+        if method == self.Method.RANDOM.value:
             skill_w, skill_b = self._weights_random(out_w, out_b, **kwargs)
-        elif method is self.Method.RANDOM_BIASED:
+        elif method == self.Method.RANDOM_BIASED.value:
             skill_w, skill_b = self._weights_random_biased(out_w, out_b, **kwargs)
-        elif method is self.Method.START_OBSS_SKILLS_AVG:
+        elif method == self.Method.START_OBSS_SKILLS_AVG.value:
             skill_w, skill_b = self._weights_start_obss_skills_avg(out_w, out_b, **kwargs)
-        elif method is self.Method.SUBPATH_SKILLS_AVG:
+        elif method == self.Method.SUBPATH_SKILLS_AVG.value:
             skill_w, skill_b = self._weights_subpath_skills_avg(out_w, out_b, **kwargs)
-        elif method is self.Method.SUBPATH_SKILLS_SMOOTH_AVG:
+        elif method == self.Method.SUBPATH_SKILLS_SMOOTH_AVG.value:
             skill_w, skill_b = self._weights_subpath_skills_smooth_avg(out_w, out_b, **kwargs)
-        elif method is self.Method.SUBPATH_FIRST_SKILL:
+        elif method == self.Method.SUBPATH_FIRST_SKILL.value:
             skill_w, skill_b = self._weights_subpath_first_skill(out_w, out_b, **kwargs)
         else:
             raise NotImplementedError
@@ -75,6 +75,7 @@ class CategoricalMLPSkillIntegrator(SkillIntegrator):
         new_weights[-2] = new_out_w
         new_weights[-1] = new_out_b
         return new_weights
+
 
     def _weights_random(self, old_w, old_b, **kwargs):
         w = np.random.normal(size=old_w.shape[0], loc=np.mean(old_w), scale=np.std(old_w))
@@ -97,15 +98,23 @@ class CategoricalMLPSkillIntegrator(SkillIntegrator):
         return w, b
 
     def _weights_subpath_skills_avg(self, old_w, old_b, subpath_actions, **kwargs):
+        subpath_actions = np.asarray(subpath_actions)
         num_actions = old_w.shape[1]
         action_counts = [np.sum(subpath_actions == a) for a in range(num_actions)]
         w, b = self._get_weighted_average(old_w, old_b, avg_weights=action_counts)
         return w, b
 
     def _weights_subpath_skills_smooth_avg(self, old_w, old_b, subpath_actions, **kwargs):
-        # TODO implement, kwargs = subpath['actions']
-        w = 0
-        b = 0
+        subpath_actions = np.asarray(subpath_actions)
+        last_action_weight = 0.01  # may be tuned
+        num_actions = old_w.shape[1]
+        subpath_length = len(subpath_actions)
+        q = np.power(last_action_weight, 1 / (subpath_length - 1))  # 1 * q^(num_actions-1) == last_action_weight
+        qs = np.ones(subpath_length)
+        qs[1:] = q
+        qs = np.cumprod(qs)
+        action_weights = [np.sum(qs[subpath_actions == a]) for a in range(num_actions)]
+        w, b = self._get_weighted_average(old_w, old_b, avg_weights=action_weights)
         return w, b
 
     def _weights_subpath_first_skill(self, old_w, old_b, subpath_actions, **kwargs):
@@ -114,8 +123,13 @@ class CategoricalMLPSkillIntegrator(SkillIntegrator):
         b = np.copy(old_b[a]) + np.random.normal(size=1, scale=0.01)
         return w, b
 
+
     def _get_weighted_average(self, old_w, old_b, avg_weights):
         avg_weights /= np.sum(avg_weights)
         w = old_w @ avg_weights
         b = old_b @ avg_weights
         return w, b
+
+    @staticmethod
+    def get_method_by_index(idx):
+        return list(CategoricalMLPSkillIntegrator.Method)[idx].value
