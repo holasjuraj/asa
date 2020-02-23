@@ -12,6 +12,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 path = '/home/h/holas3/garage/data/local/asa-test/instant_run/itr_0.pkl'
 path = '/home/h/holas3/garage/data/archive/asa-test/2019_10_18-12_35--Basic_run_25itrs_maps12_b5000--s1/itr_3.pkl'
+path = '/home/h/holas3/garage/data/local/asa-test/2020_01_30-14_21--Basic_run_25itrs_subpth3to5_b5000--s3/itr_8.pkl'
 path = '/home/h/holas3/garage/data/local/asa-train-new-skill/instant_run/final.pkl'
 
 config = tf.ConfigProto()

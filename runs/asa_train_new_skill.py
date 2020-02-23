@@ -120,7 +120,7 @@ def run_task(*_):
         # DEBUG set custom training params (should`ve been set in asa_test)
         low_algo_kwargs['batch_size'] = 2500
         low_algo_kwargs['max_path_length'] = 50
-        low_algo_kwargs['n_itr'] = 50
+        low_algo_kwargs['n_itr'] = 150
 
         # Algorithm
         algo = low_algo_cls(
@@ -155,7 +155,7 @@ def run_task(*_):
         with open(out_file, 'wb') as file:
             out_data = {
                     'policy': new_skill_policy,
-                    'end_obss': hrl_policy._skills_end_obss[new_skill_id]
+                    'subpath': top_subpath
             }
             dill.dump(out_data, file)
 

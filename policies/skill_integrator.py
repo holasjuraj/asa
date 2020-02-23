@@ -13,23 +13,39 @@ class SkillIntegrator(ABC):
         raise NotImplementedError
 
 
-
+# noinspection PyMethodMayBeStatic
+# noinspection PyClassHasNoInit
 class CategoricalMLPSkillIntegrator(SkillIntegrator):
-    # noinspection PyClassHasNoInit
     class Method(Enum):
-        RANDOM = 'random'
+        RANDOM = 'rnd'
         # Initialize weights and bias randomly from normal distribution,
         # keeping mean and std.
 
-        RANDOM_BIASED = 'random_biased'
+        RANDOM_BIASED = 'rndBias'
         # Initialize weights randomly from normal distribution, keeping mean
         # and std. Make bias significantly greater to encourage exploration of
         # new sill.
 
-        OLD_SKILL_AVG = 'old_skills_avg'
+        START_OBSS_SKILLS_AVG = 'startObsAvg'
         # Initialize weights as weighted average of old skills` weights.
         # Average is weighted w.r.t. frequency of choosing an old skill in
         # situations with new_skill.start_obss observation.
+
+        SUBPATH_SKILLS_AVG = 'sbptAvg'
+        # Initialize weights as weighted average of old skills` weights.
+        # Average is weighted w.r.t. frequency of using an old skill in
+        # subpath that defines new skill.
+
+        SUBPATH_SKILLS_SMOOTH_AVG = 'sbptSmthAvg'
+        # Initialize weights as weighted average of old skills` weights.
+        # New weights are computed as exponentially smoothed average of skills
+        # used in subpath that defines new skill (first skill=step has greatest
+        # weight in average, last has lowest).
+
+        SUBPATH_FIRST_SKILL = 'sbptFrst'
+        # Initialize weights by copying weights of skill that was used as first
+        # step of subpath that defines new skill. Small noise is added to
+        # prevent the two skills to be chosen identically.
 
 
     def integrate_skill(self, old_policy_weights, method=Method.RANDOM, **kwargs):
@@ -37,12 +53,18 @@ class CategoricalMLPSkillIntegrator(SkillIntegrator):
         out_w = new_weights[-2]
         out_b = new_weights[-1]
 
-        if method is self.Method.RANDOM:
-            skill_w, skill_b = self._weights_random(out_w, out_b)
-        elif method is self.Method.RANDOM_BIASED:
-            skill_w, skill_b = self._weights_random_biased(out_w, out_b)
-        elif method is self.Method.OLD_SKILL_AVG:
-            skill_w, skill_b = self._weights_old_skill_avg(out_w, out_b)
+        if method == self.Method.RANDOM.value:
+            skill_w, skill_b = self._weights_random(out_w, out_b, **kwargs)
+        elif method == self.Method.RANDOM_BIASED.value:
+            skill_w, skill_b = self._weights_random_biased(out_w, out_b, **kwargs)
+        elif method == self.Method.START_OBSS_SKILLS_AVG.value:
+            skill_w, skill_b = self._weights_start_obss_skills_avg(out_w, out_b, **kwargs)
+        elif method == self.Method.SUBPATH_SKILLS_AVG.value:
+            skill_w, skill_b = self._weights_subpath_skills_avg(out_w, out_b, **kwargs)
+        elif method == self.Method.SUBPATH_SKILLS_SMOOTH_AVG.value:
+            skill_w, skill_b = self._weights_subpath_skills_smooth_avg(out_w, out_b, **kwargs)
+        elif method == self.Method.SUBPATH_FIRST_SKILL.value:
+            skill_w, skill_b = self._weights_subpath_first_skill(out_w, out_b, **kwargs)
         else:
             raise NotImplementedError
 
@@ -54,22 +76,60 @@ class CategoricalMLPSkillIntegrator(SkillIntegrator):
         new_weights[-1] = new_out_b
         return new_weights
 
-    @staticmethod
-    def _weights_random(old_w, old_b):
+
+    def _weights_random(self, old_w, old_b, **kwargs):
         w = np.random.normal(size=old_w.shape[0], loc=np.mean(old_w), scale=np.std(old_w))
         b = np.random.normal(size=1, loc=np.mean(old_b), scale=np.std(old_b))
         return w, b
 
-    @staticmethod
-    def _weights_random_biased(old_w, old_b):
+    def _weights_random_biased(self, old_w, old_b, **kwargs):
         w = np.random.normal(size=old_w.shape[0], loc=np.mean(old_w), scale=np.std(old_w))
         b = np.array([np.max(old_b) + np.ptp(old_b)])
         return w, b
 
-    @staticmethod
-    def _weights_old_skill_avg(old_w, old_b):
-        # DEBUG only working for MinibotRightPolicy as a new skill - taking
-        #       'left' weights and copying them as 'right' weights (+ noise)
-        w = np.copy(old_w[:, 1]) + np.random.normal(size=old_w.shape[0], scale=0.01)
-        b = np.copy(old_b[1]) + np.random.normal(size=1, scale=0.01)
+    def _weights_start_obss_skills_avg(self, old_w, old_b, subpath_start_obss, top_policy, **kwargs):
+        action_probs = []
+        for obs in subpath_start_obss:
+            _, ag_info = top_policy.get_action(obs)  # we toss away the actual action
+            action_probs.append(ag_info['prob'])
+        action_probs = np.array(action_probs)
+        mean_action_probs = np.mean(action_probs, axis=0)
+        w, b = self._get_weighted_average(old_w, old_b, avg_weights=mean_action_probs)
         return w, b
+
+    def _weights_subpath_skills_avg(self, old_w, old_b, subpath_actions, **kwargs):
+        subpath_actions = np.asarray(subpath_actions)
+        num_actions = old_w.shape[1]
+        action_counts = [np.sum(subpath_actions == a) for a in range(num_actions)]
+        w, b = self._get_weighted_average(old_w, old_b, avg_weights=action_counts)
+        return w, b
+
+    def _weights_subpath_skills_smooth_avg(self, old_w, old_b, subpath_actions, **kwargs):
+        subpath_actions = np.asarray(subpath_actions)
+        last_action_weight = 0.01  # may be tuned
+        num_actions = old_w.shape[1]
+        subpath_length = len(subpath_actions)
+        q = np.power(last_action_weight, 1 / (subpath_length - 1))  # 1 * q^(num_actions-1) == last_action_weight
+        qs = np.ones(subpath_length)
+        qs[1:] = q
+        qs = np.cumprod(qs)
+        action_weights = [np.sum(qs[subpath_actions == a]) for a in range(num_actions)]
+        w, b = self._get_weighted_average(old_w, old_b, avg_weights=action_weights)
+        return w, b
+
+    def _weights_subpath_first_skill(self, old_w, old_b, subpath_actions, **kwargs):
+        a = subpath_actions[0]
+        w = np.copy(old_w[:, a]) + np.random.normal(size=old_w.shape[0], scale=0.01)
+        b = np.copy(old_b[a]) + np.random.normal(size=1, scale=0.01)
+        return w, b
+
+
+    def _get_weighted_average(self, old_w, old_b, avg_weights):
+        avg_weights /= np.sum(avg_weights)
+        w = old_w @ avg_weights
+        b = old_b @ avg_weights
+        return w, b
+
+    @staticmethod
+    def get_method_by_index(idx):
+        return list(CategoricalMLPSkillIntegrator.Method)[idx].value
