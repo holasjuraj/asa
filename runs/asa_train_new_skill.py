@@ -8,7 +8,7 @@ from datetime import datetime
 import numpy as np
 
 
-from sandbox.asa.envs import HierarchizedEnv, SkillLearningEnv
+from sandbox.asa.envs import SkillLearningEnv
 from sandbox.asa.utils.path_trie import PathTrie
 
 from garage.tf.envs import TfEnv                     # Environment wrapper

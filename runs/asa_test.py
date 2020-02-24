@@ -20,7 +20,7 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 # Parse arguments
@@ -107,13 +107,13 @@ def run_task(*_):
             # Top algo kwargs
                 batch_size=5000,
                 max_path_length=100,
-                n_itr=25,
+                n_itr=40,
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
-                'batch_size': 1000,
-                'max_path_length': 30,
-                'n_itr': 25,
+                'batch_size': 2500,
+                'max_path_length': 50,
+                'n_itr': 500,
                 'discount': 0.99,
             }
     )
@@ -138,7 +138,7 @@ def run_task(*_):
 # Run experiment
 seed = 3
 exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'Basic_run_25itrs_subpth3to5_b5000'
+exp_name_extra = 'Basic_run_40itrs_sbpt3to5_b5000'
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \

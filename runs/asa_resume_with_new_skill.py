@@ -14,7 +14,7 @@ from sandbox.asa.policies import CategoricalMLPSkillIntegrator
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.envs import TfEnv                     # Environment wrapper
-from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
+from garage.tf.policies import CategoricalMLPPolicy  # Policy networks
 from garage.misc.instrument import run_experiment    # Experiment-running util
 from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
@@ -64,7 +64,6 @@ def run_task(*_):
         ## Lower level environment & policies
         # Base (original) environment.
         base_env = saved_data['env'].env.env  # <NormalizedEnv<MinibotEnv instance>>
-        tf_base_env = TfEnv(base_env)
 
         # Skill policies, operating in base environment
         trained_skill_policies = [
@@ -179,8 +178,7 @@ exp_name_extra = 'New_skill_script_With_policy_150itrs'
 skill_integration_method = CategoricalMLPSkillIntegrator.Method.START_OBSS_SKILLS_AVG
 skill_integration_method = \
         skill_integration_method if args.integration_method == 'keep' \
-        else CategoricalMLPSkillIntegrator.get_method_by_index(
-        int(args.integration_method))
+        else CategoricalMLPSkillIntegrator.get_method_by_index(int(args.integration_method))
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
