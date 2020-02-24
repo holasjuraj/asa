@@ -52,7 +52,7 @@ def run_task(*_):
         action_map = {0: 's', 1: 'L', 2: 'R'}
         min_f_score = 1
         max_results = 10
-        aggregations = ['mean']  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
+        aggregations = []  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
 
         paths = saved_data['paths']
         path_trie = PathTrie(saved_data['hrl_policy'].num_skills)
@@ -83,7 +83,16 @@ def run_task(*_):
                 f_path['f_score'],
                 pad=max_length))
 
-        top_subpath = frequent_paths[0]
+        # top_subpath = frequent_paths[0]
+        # DEBUG always use sLLLs
+        top_subpath = path_trie.item_for_path([0, 1, 1, 1, 0], action_map=action_map)
+        if top_subpath is None:
+            print('Path sLLLs is not in trie')
+            exit(1)
+        if top_subpath['count'] < 10:
+            print('Path sLLLs has only count = {}'.format(top_subpath['count']))
+            exit(1)
+        # /DEBUG
         start_obss = top_subpath['start_observations']
         end_obss   = top_subpath['end_observations']
 
@@ -120,7 +129,7 @@ def run_task(*_):
         # DEBUG set custom training params (should`ve been set in asa_test)
         low_algo_kwargs['batch_size'] = 2500
         low_algo_kwargs['max_path_length'] = 50
-        low_algo_kwargs['n_itr'] = 150
+        low_algo_kwargs['n_itr'] = 500
 
         # Algorithm
         algo = low_algo_cls(
@@ -170,8 +179,8 @@ def run_task(*_):
 
 ## Run pickled
 seed = 3
-exp_name_direct = 'instant_run'
-exp_name_extra = 'Skill_from_s3_itr8_path0_500itrs_len50_VectorisedSampler_Cache'
+exp_name_direct = None  # 'instant_run'
+exp_name_extra = 'For_all_Skill_sLLLs'
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
@@ -186,7 +195,7 @@ run_experiment(
         exp_prefix='asa-train-new-skill',
         exp_name=exp_name_direct or \
                  (datetime.now().strftime('%Y_%m_%d-%H_%M')
-                  # + '--after_' + snapshot_name
+                  + '--after_' + snapshot_name
                   + (('--' + exp_name_extra) if exp_name_extra else '')
                   + (('--s' + str(seed)) if seed else '')
                  ),
