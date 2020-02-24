@@ -175,6 +175,8 @@ seed = 3
 exp_name_direct = None  # 'instant_run'
 exp_name_extra = 'New_skill_script_With_policy_150itrs'
 
+skill_policy_exp_name = '--'.split(new_skill_policy_file)[-2]
+
 skill_integration_method = CategoricalMLPSkillIntegrator.Method.START_OBSS_SKILLS_AVG
 skill_integration_method = \
         skill_integration_method if args.integration_method == 'keep' \
@@ -193,8 +195,9 @@ run_experiment(
         exp_prefix='asa-resume-with-new-skill',
         exp_name=exp_name_direct or \
                  (datetime.now().strftime('%Y_%m_%d-%H_%M')
+                  + '--resumed_' + snapshot_name
                   + (('--' + exp_name_extra) if exp_name_extra else '')
-                  + '--resumed_from_' + snapshot_name
+                  + '--skill_' + skill_policy_exp_name
                   + '--integ_' + skill_integration_method
                   + (('--s' + str(seed)) if seed else '')
                  ),

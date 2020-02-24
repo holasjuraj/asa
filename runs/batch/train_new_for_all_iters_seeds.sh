@@ -7,7 +7,7 @@
 max_parallel=8
 usage="
 Usage: $(basename $0) [-g gap] -d <data_dir>
-Launch asa_resume_with_new_skill.py for all itr_*.pkl files in given folder.
+Launch asa_train_new_skill.py for all itr_*.pkl files for all seeds in given folder.
 
 Options:
   -g gap         do not run for every itr_*.pkl file, but for every N-th file. Default = 1
@@ -17,7 +17,7 @@ Options:
 # Check arguments
 gap=1
 data_dir=""
-while getopts s:g:d: option; do
+while getopts g:d: option; do
   case "${option}" in
     g) gap=${OPTARG}; ;;
     d) data_dir=${OPTARG}; ;;
