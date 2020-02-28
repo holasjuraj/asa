@@ -131,5 +131,11 @@ class CategoricalMLPSkillIntegrator(SkillIntegrator):
         return w, b
 
     @staticmethod
-    def get_method_by_index(idx):
+    def get_method_str_by_index(idx):
         return list(CategoricalMLPSkillIntegrator.Method)[idx].value
+
+    @staticmethod
+    def get_index_of_method_str(method_str):
+        return {m.value: idx
+                for idx, m in enumerate(list(CategoricalMLPSkillIntegrator.Method))
+               }[method_str]

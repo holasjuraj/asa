@@ -20,7 +20,7 @@ from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
 # Parse arguments
@@ -170,22 +170,31 @@ def run_task(*_):
 ## Run directly
 # run_task()
 
+
 ## Run pickled
+# General experiment settings
 seed = 3
 exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'New_skill_script_With_policy_150itrs'
+exp_name_extra = 'From_all_manual'
 
-skill_policy_exp_name = '--'.split(new_skill_policy_file)[-2]
+# Skill policy experiment name
+skill_policy_dir = os.path.basename(os.path.dirname(new_skill_policy_file))
+try: skill_policy_exp_name = skill_policy_dir.split('--')[-2]
+except IndexError: skill_policy_exp_name = skill_policy_dir
 
+# Skill integration method
 skill_integration_method = CategoricalMLPSkillIntegrator.Method.START_OBSS_SKILLS_AVG
 skill_integration_method = \
-        skill_integration_method if args.integration_method == 'keep' \
-        else CategoricalMLPSkillIntegrator.get_method_by_index(int(args.integration_method))
+        skill_integration_method.value if args.integration_method == 'keep' \
+        else CategoricalMLPSkillIntegrator.get_method_str_by_index(int(args.integration_method))
+skill_integration_idx = CategoricalMLPSkillIntegrator.get_index_of_method_str(skill_integration_method)
 
+# Seed
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
        else int(args.seed)
 
+# Launch training
 run_experiment(
         run_task,
         # Configure TF
@@ -198,7 +207,7 @@ run_experiment(
                   + '--resumed_' + snapshot_name
                   + (('--' + exp_name_extra) if exp_name_extra else '')
                   + '--skill_' + skill_policy_exp_name
-                  + '--integ_' + skill_integration_method
+                  + '--integ' + str(skill_integration_idx) + '_' + skill_integration_method
                   + (('--s' + str(seed)) if seed else '')
                  ),
         # Number of parallel workers for sampling

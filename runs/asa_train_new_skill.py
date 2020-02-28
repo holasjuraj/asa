@@ -18,7 +18,7 @@ from garage.misc import logger
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
 # Parse arguments
@@ -83,16 +83,16 @@ def run_task(*_):
                 f_path['f_score'],
                 pad=max_length))
 
-        # top_subpath = frequent_paths[0]
-        # DEBUG always use sLLLs
-        top_subpath = path_trie.item_for_path([0, 1, 1, 1, 0], action_map=action_map)
-        if top_subpath is None:
-            print('Path sLLLs is not in trie')
-            exit(1)
-        if top_subpath['count'] < 10:
-            print('Path sLLLs has only count = {}'.format(top_subpath['count']))
-            exit(1)
-        # /DEBUG
+        top_subpath = frequent_paths[0]
+        # # DEBUG always use sLLLs
+        # top_subpath = path_trie.item_for_path([0, 1, 1, 1, 0], action_map=action_map)
+        # if top_subpath is None:
+        #     print('Path sLLLs is not in trie')
+        #     exit(1)
+        # if top_subpath['count'] < 10:
+        #     print('Path sLLLs has only count = {}'.format(top_subpath['count']))
+        #     exit(1)
+        # # /DEBUG
         start_obss = top_subpath['start_observations']
         end_obss   = top_subpath['end_observations']
 
@@ -180,7 +180,7 @@ def run_task(*_):
 ## Run pickled
 seed = 3
 exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'For_all_Skill_sLLLs'
+exp_name_extra = 'For_all_Top_skill'
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
