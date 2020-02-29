@@ -5,6 +5,7 @@ import dill
 import argparse
 import os
 from datetime import datetime
+import numpy as np
 
 from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
@@ -20,7 +21,7 @@ from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
 # Parse arguments
@@ -43,6 +44,14 @@ snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/2020_01_
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 new_skill_policy_file = args.skill_policy or '/home/h/holas3/garage/data/local/asa-train-new-skill/instant_run/final.pkl'  # for direct runs
 
+# DEBUG for runs without loaded skill
+new_skill_policy_file = None
+skill_policy_exp_name = 'MinibotRight'
+new_skill_subpath = {
+    'actions': [1, 1, 1],
+    'start_observations': np.array([[0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # at corner
+}
+
 
 
 def run_task(*_):
@@ -55,11 +64,13 @@ def run_task(*_):
             saved_data = dill.load(file)
 
         ## Load data of new skill
-        with open(new_skill_policy_file, 'rb') as file:
-            new_skill_data = dill.load(file)
-        new_skill_policy = new_skill_data['policy']
-        new_skill_subpath = new_skill_data['subpath']
-        new_skill_stop_func = lambda path: path['observations'][-1] in new_skill_subpath['end_observations']
+        global new_skill_subpath
+        if new_skill_policy_file:
+            with open(new_skill_policy_file, 'rb') as file:
+                new_skill_data = dill.load(file)
+            new_skill_policy = new_skill_data['policy']
+            new_skill_subpath = new_skill_data['subpath']
+            new_skill_stop_func = lambda path: path['observations'][-1] in new_skill_subpath['end_observations']
 
         ## Lower level environment & policies
         # Base (original) environment.
@@ -69,14 +80,14 @@ def run_task(*_):
         trained_skill_policies = [
                 MinibotForwardPolicy(env_spec=base_env.spec),
                 MinibotLeftPolicy(env_spec=base_env.spec),
-                new_skill_policy
-                # MinibotRightPolicy(env_spec=base_env.spec)  # DEBUG
+                # new_skill_policy
+                MinibotRightPolicy(env_spec=base_env.spec)  # DEBUG
         ]
         trained_skill_policies_stop_funcs = [
                 lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
                 lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
-                new_skill_stop_func
-                # lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90° # DEBUG
+                # new_skill_stop_func
+                lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90° # DEBUG
         ]
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 
@@ -151,7 +162,7 @@ def run_task(*_):
                 # Top algo kwargs
                     batch_size=5000,
                     max_path_length=100,
-                    n_itr=25,
+                    n_itr=40,
                     start_itr=saved_data['itr'] + 1,  # Continue from previous iteration number
                     discount=0.99,
                     force_batch_sampler=True,
@@ -178,9 +189,10 @@ exp_name_direct = None  # 'instant_run'
 exp_name_extra = 'From_all_manual'
 
 # Skill policy experiment name
-skill_policy_dir = os.path.basename(os.path.dirname(new_skill_policy_file))
-try: skill_policy_exp_name = skill_policy_dir.split('--')[-2]
-except IndexError: skill_policy_exp_name = skill_policy_dir
+if new_skill_policy_file:
+    skill_policy_dir = os.path.basename(os.path.dirname(new_skill_policy_file))
+    try: skill_policy_exp_name = skill_policy_dir.split('--')[-2]
+    except IndexError: skill_policy_exp_name = skill_policy_dir
 
 # Skill integration method
 skill_integration_method = CategoricalMLPSkillIntegrator.Method.START_OBSS_SKILLS_AVG
