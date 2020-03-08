@@ -21,7 +21,7 @@ from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-# os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 # Parse arguments
@@ -44,13 +44,13 @@ snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/2020_01_
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 new_skill_policy_file = args.skill_policy or '/home/h/holas3/garage/data/local/asa-train-new-skill/instant_run/final.pkl'  # for direct runs
 
-# DEBUG for runs without loaded skill
-new_skill_policy_file = None
-skill_policy_exp_name = 'MinibotRight'
-new_skill_subpath = {
-    'actions': [1, 1, 1],
-    'start_observations': np.array([[0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # at corner
-}
+# # DEBUG for runs without loaded skill
+# new_skill_policy_file = None
+# skill_policy_exp_name = 'MinibotRight'
+# new_skill_subpath = {
+#     'actions': [1, 1, 1],
+#     'start_observations': np.array([[0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # at corner
+# }
 
 
 
@@ -80,14 +80,14 @@ def run_task(*_):
         trained_skill_policies = [
                 MinibotForwardPolicy(env_spec=base_env.spec),
                 MinibotLeftPolicy(env_spec=base_env.spec),
-                # new_skill_policy
-                MinibotRightPolicy(env_spec=base_env.spec)  # DEBUG
+                new_skill_policy
+                # MinibotRightPolicy(env_spec=base_env.spec)  # DEBUG
         ]
         trained_skill_policies_stop_funcs = [
                 lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
                 lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
-                # new_skill_stop_func
-                lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90° # DEBUG
+                new_skill_stop_func
+                # lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90° # DEBUG
         ]
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 

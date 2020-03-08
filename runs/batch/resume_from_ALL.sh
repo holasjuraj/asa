@@ -64,7 +64,7 @@ for integ_method in $(seq 0 5); do
     seed=`echo "$seed_dir" | sed -n "s/^.*--s\([0-9]\+\).*$/\1/p"`
 
     # Get last itr_N.pkl file name
-    last_itr_file=$(ls -t1 $seed_dir/itr_*.pkl | head -1)
+    last_itr_file=$(basename "$(ls -t1 $seed_dir/itr_*.pkl | head -1)")
 
     itr_i=0
     for itr_f in $(ls -tr "$seed_dir/"itr_*.pkl); do
@@ -74,6 +74,11 @@ for integ_method in $(seq 0 5); do
         continue
       fi
       itr_i=0
+
+      # Do not start training from last itr_N.pkl
+      if [ "$(basename $itr_f)" == "$last_itr_file" ]; then
+        continue
+      fi
 
       itr_id=$(basename $itr_f .pkl)  # "itr_N"
 
@@ -86,6 +91,9 @@ for integ_method in $(seq 0 5); do
         done
         unset back_pids
         num_pids=0
+
+        # Clear all but last snapshot files
+        rm -f $(for exp_dir in $experiments_dir/*; do ls -tr1 $exp_dir/itr* 2>/dev/null | head -n -1; done)
       fi
 
       # Get currect skill policy file
@@ -93,10 +101,9 @@ for integ_method in $(seq 0 5); do
         skill_policy_dir=$skill_name
         skill_policy_file="nofile"
       else
-        skill_exists=true
-        skill_policy_dir=$(ls -d $skill_policies_dir/*after_*$itr_id--*$skill_name*--s$seed 2>/dev/null)  || skill_exists=false
+        skill_policy_dir=$(ls -d $skill_policies_dir/*after_*$itr_id--*$skill_name*--s$seed 2>/dev/null | tail -1)
         skill_policy_file="$skill_policy_dir/final.pkl"
-        if ! $skill_exists; then
+        if [ ! $skill_policy_dir ]; then
           echo "Warning: Directory with skill does not exist! Skipping method:$integ_method seed:$seed iteration:$itr_id"
           continue
         fi
@@ -107,14 +114,13 @@ for integ_method in $(seq 0 5); do
       fi
 
       # Check whether this run was already executed
-      exp_dir_ok=true
-      exp_dir=$(ls -d $experiments_dir/*resumed_$itr_id--*--skill*$skill_name*--integ$integ_method*--s$seed 2>/dev/null)  || exp_dir_ok=false
+      exp_dir=$(ls -d $experiments_dir/*resumed_$itr_id--*--skill*$skill_name*--integ$integ_method*--s$seed 2>/dev/null | tail -1)
       exp_done_file="$exp_dir/$last_itr_file"
-      if $exp_dir_ok && [ -f "$exp_done_file" ]; then
+      if [ $exp_dir ] && [ -f "$exp_done_file" ]; then
         # This experiment was successfuly executed
         continue
       fi
-      if $exp_dir_ok; then
+      if [ $exp_dir ]; then
         # Archive failed run
         echo "Archiving failed run $(basename $exp_dir)"
         mv $exp_dir "$failed_dir/"
@@ -125,7 +131,7 @@ for integ_method in $(seq 0 5); do
         out="${tmp_dir}/integ${integ_method}_${itr_id}_s${seed}_out.txt"
         printf "Launching training with integrator %s, seed %s, resumed after %s, with skill %s\n" $integ_method $seed $itr_id "$(basename $skill_policy_dir)"
         # Run
-        $script --file $itr_f --skill-policy $skill_policy_file --integration-method $integ_method --seed $seed &> $out && rm $out
+        $script --file $itr_f --skill-policy $skill_policy_file --integration-method $integ_method --seed $seed &> $out  # && rm $out
         printf "Training with integrator %s, seed %s, resumed after %s finished\n" $integ_method $seed $itr_id
       ) &
       back_pids[$num_pids]=$!
@@ -139,8 +145,8 @@ for p in ${back_pids[*]}; do
   wait $p
 done
 
-# Remove tmp dir if empty
-rm $script
-rmdir $tmp_dir
+## Remove tmp dir if empty
+#rm $script
+#rmdir $tmp_dir
 
 echo "==== ALL DONE ===="
