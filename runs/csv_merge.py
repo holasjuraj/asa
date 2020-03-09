@@ -6,13 +6,16 @@ from pandas.errors import EmptyDataError
 
 
 # Define input/output
-data_dir = '/home/h/holas3/garage/data/archive/Skill_integrator_test1_mapsAll_b5000'
+data_dir = '/home/h/holas3/garage/data/archive/TEST3_Resumed_all_manual/Resumed_with_sLLLs_skill'
 output_format = 'xlsx'  # 'csv' or xlsx
 output_filename = os.path.join(data_dir, 'All_data--' + os.path.basename(data_dir) + '.' + output_format)
-output_columns = ['ExpName', 'ExpResumedFrom', 'ExpSeed', 'ExpDatetime',
-                  'Iteration', 'AverageDiscountedReturn', 'AverageReturn',
-                  'NumTrajs', 'StdReturn', 'MaxReturn', 'MinReturn', 'Time',
-                  'ItrTime']
+output_columns = [
+        'ExpName', 'ExpSkill', 'ExpIntegrator', 'ExpResumedFrom', 'ExpSeed', 'ExpDatetime',
+        'Iteration', 'AverageDiscountedReturn', 'AverageReturn',
+        'StdReturn', 'MaxReturn', 'MinReturn',
+        # 'DiscreteActions/0', 'DiscreteActions/1', 'DiscreteActions/2',
+        'NumTrajs', 'SuccessfulTrajs', 'ItrTime', 'Time'
+]
 
 
 # Process experiments
@@ -21,21 +24,32 @@ for exp_dir in sorted(os.scandir(data_dir), key=lambda d: d.name):
     if not exp_dir.is_dir():
         continue
     print('Processing {}'.format(exp_dir.name))
+
     # Retrieve experiment info
     exp_info = exp_dir.name.split('--')
-    exp_datetime, exp_name = exp_info[:2]
-    exp_resumed_from = '-'
-    if exp_name.startswith('resumed_from_itr_'):
-        exp_resumed_from = int(exp_name[exp_name.rfind('_')+1 :])
-        exp_name = exp_info[2]
+    exp_datetime = exp_info[0]
     exp_seed = exp_info[-1]
+    exp_resumed_from = exp_integrator = exp_skill = '-'
+    if len(exp_info) == 3:  # Basic run
+        exp_name = exp_info[1]
+    elif len(exp_info) == 6:  # Resumed from
+        r, exp_name, s, i = exp_info[1:5]
+        exp_resumed_from = int(r[r.rfind('_')+1 :])
+        exp_skill = s[s.find('_')+1 :]
+        exp_integrator = i[i.find('_')+1 :]
+    else:
+        raise Exception('Unable to parse experiment name!')
+
     # Read progress.csv
     try:
         data = pd.read_csv(os.path.join(exp_dir.path, 'progress.csv'))
     except EmptyDataError:
         continue
+
     # Add experiment info
     data['ExpName'] = exp_name
+    data['ExpSkill'] = exp_skill
+    data['ExpIntegrator'] = exp_integrator
     data['ExpResumedFrom'] = exp_resumed_from
     data['ExpSeed'] = exp_seed
     data['ExpDatetime'] = pd.to_datetime(exp_datetime, format='%Y_%m_%d-%H_%M')
@@ -63,7 +77,7 @@ elif output_format == 'xlsx':
             index=False,
             columns=output_columns,
             float_format='%.4f',
-            freeze_panes=(1, 3)
+            freeze_panes=(1, 5)
     )
 else:
     raise NotImplementedError
