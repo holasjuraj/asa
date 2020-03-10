@@ -35,6 +35,8 @@ class MinibotEnv(AsaEnv, Serializable):
     Agent`s actions are optionally discretized from {<-1,-0.33> , <-0.33,0.33> , <0.33,1>} to [-1, 0, 1],
     to ensure full motor output (bang-bang policy).
 
+    Agent receives reward of 1 if it reaches the goal and -1 if it falls into a hole.
+
 
     Maps legend:
         'S' : starting point
@@ -89,6 +91,17 @@ class MinibotEnv(AsaEnv, Serializable):
          "######..",
          "..G###..",
          "........"
+        ],
+        ["............",
+         "............",
+         "..########..",
+         ".S#......#..",
+         "..#......#..",
+         "###..##..#..",
+         "###..#G..#..",
+         "###..#####..",
+         "###.........",
+         "###........."
         ]
     ]
     map_colors = ['maroon', 'midnightblue', 'darkgreen', 'darkgoldenrod']
