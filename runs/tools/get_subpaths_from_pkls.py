@@ -8,7 +8,7 @@ from sandbox.asa.utils.path_trie import PathTrie
 # If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-data_dir = '/home/h/holas3/garage/data/local/asa-test'
+data_dir = '/home/h/holas3/garage/data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Basic_runs'
 output_filename = os.path.join(data_dir, 'All_subpaths_from_pkls.tsv')
 output_file = open(output_filename, 'w')
 

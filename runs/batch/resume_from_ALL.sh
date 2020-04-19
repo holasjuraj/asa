@@ -6,20 +6,23 @@
 #
 # shellcheck disable=SC2045
 
-max_parallel=8
+max_parallel=20
 usage="
-Usage: $(basename $0) [-g gap] -d <data_dir> (-p <skill_policies_dir> | -i) -n <skill_name>
+Usage: $(basename $0) -d <data_dir> (-p <skill_policies_dir> | -P) [-N <exp_name>] [-n <skill_name>] [-g gap] [-i min_itr_num] [-I max_itr_num]
 Launch asa_resume_with_new_skill.py for all possible options:
 - all seeds (subfolders of data_dir folder)
 - all iterations (itr_N.pkl files)
 - all integration methods
 
 Options:
-  -g gap                   do not run for every itr_*.pkl file, but for every N-th file. Default = 1
-  -d data_dir              specify directory with itr_*.pkl files
+  -d data_dir              specify directory with subdirectories of Basic runs
   -p skill_policies_dir    specify directory with subdirectories of skills
-  -i                       ignore skill files
+  -P                       manually specified skill policy, ignore skill files
+  -N exp_name              (part of) experiment name, used to check for failed runs
   -n skill_name            look for skills only in skill_policies_dir/*skill_name* folders
+  -g gap                   do not run for every itr_*.pkl file, but for every N-th file. Default = 1
+  -i iteration_number      minimal iteration number to run for
+  -I iteration_number      maximal iteration number to run for
 "
 
 # Check arguments
@@ -27,20 +30,26 @@ seed="keep"
 gap=1
 data_dir=""
 skill_policies_dir=""
+exp_name=""
 skill_name=""
 ignore_skill_files=false
-while getopts g:d:p:in: option; do
+min_itr_num=0
+max_itr_num=9999
+while getopts d:p:PN:n:g:i:I: option; do
   case "${option}" in
-    g) gap=${OPTARG}; ;;
     d) data_dir=${OPTARG}; ;;
     p) skill_policies_dir=${OPTARG}; ;;
-    i) ignore_skill_files=true; ;;
+    P) ignore_skill_files=true; ;;
+    N) exp_name=${OPTARG}; ;;
     n) skill_name=${OPTARG}; ;;
+    g) gap=${OPTARG}; ;;
+    i) min_itr_num=${OPTARG}; ;;
+    I) max_itr_num=${OPTARG}; ;;
     *) echo "$usage" ; exit 1; ;;
   esac
 done
 
-if [ ! $data_dir ] || [ ! $skill_policies_dir ] && ! $ignore_skill_files || [ ! $skill_name ]; then
+if [ ! $data_dir ] || [ ! $skill_policies_dir ] && ! $ignore_skill_files; then
   echo "$usage"
   exit 1
 fi
@@ -58,7 +67,8 @@ mkdir -p $failed_dir
 # Launch all trainings
 num_pids=0
 
-for integ_method in $(seq 0 5); do
+#for integ_method in $(seq 0 5); do
+for integ_method in 3; do  # DEBUG -- ONLY USING INTEGRATOR "SUBPATH_SKILLS_AVG"
 
   for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
     seed=`echo "$seed_dir" | sed -n "s/^.*--s\([0-9]\+\).*$/\1/p"`
@@ -80,7 +90,12 @@ for integ_method in $(seq 0 5); do
         continue
       fi
 
+      # Do not start training from itr files outside of range
       itr_id=$(basename $itr_f .pkl)  # "itr_N"
+      itr_num=${itr_id:4}
+      if [[ $itr_num -lt $min_itr_num ]] || [[ $max_itr_num -lt $itr_num ]]; then
+        continue
+      fi
 
       # Wait for batch if we reached max processes
       if [ $num_pids -ge $max_parallel ]; then
@@ -114,8 +129,8 @@ for integ_method in $(seq 0 5); do
       fi
 
       # Check whether this run was already executed
-      exp_dir=$(ls -d $experiments_dir/*resumed_$itr_id--*--skill*$skill_name*--integ$integ_method*--s$seed 2>/dev/null | tail -1)
-      exp_done_file="$exp_dir/$last_itr_file"
+      exp_dir=$(ls -d $experiments_dir/*resumed_$itr_id--*$exp_name*--skill*$skill_name*--integ$integ_method*--s$seed 2>/dev/null | tail -1)
+      exp_done_file="$exp_dir/final.pkl"
       if [ $exp_dir ] && [ -f "$exp_done_file" ]; then
         # This experiment was successfuly executed
         continue

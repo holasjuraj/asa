@@ -118,8 +118,9 @@ class PathTrie:
         n: length of total string = num_steps
         m: length of searched substring = sq_len
         p_i: probability of letter/action = (1 / self.num_actions) for all i
-        Formula = (n + num_eps*m - num_eps*1) * (1 / self.num_actions)^m
+        Formula = (n - num_eps*m + num_eps*1) * (1 / self.num_actions)^m
         '''
+        # TODO use empirical skill probabilities instead of uniform
         null_cnt = (num_steps + num_eps * (-sq_len+1)) / (self.num_actions**sq_len)
         return cnt / null_cnt
 
