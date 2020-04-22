@@ -2,35 +2,35 @@
 # Check number of experiment folders in given path, and their success rate
 
 usage="
-Usage: $(basename $0) -d <data_dir> -f <final_file> [-n name] [-x | -o <output_file>]
+Usage: $(basename $0) -d <data_dir> [-n name] [-f <final_file>] [-o | -O <output_file>]
 Check number of experiment folders in given path, and their success rate
 
 Options:
   -d data_dir       specify directory with experiment subdirectories
-  -f final_file     name of last generated file - marking successful experiment
-  -n name           consider only datadir/*name* folders
-  -x                do not produce output file
-  -o output_file    name of output file, default = experiments.txt
+  -n name           consider only datadir/*name* folders default = \"\"
+  -f final_file     name of last generated file - marking successful experiment, default = final.pkl
+  -o                produce output file with default name experiments_status.txt
+  -O output_file    produce output file with specified name
 "
 
 # Check arguments
 data_dir=""
-final_file=""
 name=""
-do_output=true
-output_file="experiments.txt"
-while getopts d:f:n:xo: option; do
+final_file="final.pkl"
+do_output=false
+output_file="experiments_status.txt"
+while getopts d:n:f:oO: option; do
   case "${option}" in
     d) data_dir=${OPTARG}; ;;
-    f) final_file=${OPTARG}; ;;
     n) name=${OPTARG}; ;;
-    x) do_output=false; ;;
-    o) output_file=${OPTARG}; ;;
+    f) final_file=${OPTARG}; ;;
+    o) do_output=true; ;;
+    O) do_output=true; output_file=${OPTARG}; ;;
     *) echo "$usage" ; exit 1; ;;
   esac
 done
 
-if [ ! $data_dir ] || [ ! $final_file ]; then
+if [ ! $data_dir ]; then
   echo "$usage"
   exit 1
 fi
@@ -55,7 +55,9 @@ for exp_dir in $data_dir/*$name*; do
       printf "\tfailed\n" >> $output_file
     fi
   else
-    echo "" >> $output_file
+    if $do_output; then
+      echo "" >> $output_file
+    fi
   fi
 done
 
