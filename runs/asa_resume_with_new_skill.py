@@ -10,7 +10,7 @@ import numpy as np
 from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
 from sandbox.asa.policies import HierarchicalPolicy
-from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy, MinibotRightPolicy
+from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy, MinibotRightPolicy, MinibotRandomPolicy
 from sandbox.asa.policies import CategoricalMLPSkillIntegrator
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
@@ -40,13 +40,14 @@ parser.add_argument('-s', '--seed',
                     metavar='SEED', default='keep')
 args = parser.parse_args()
 
-snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/2020_01_30-14_21--Basic_run_25itrs_subpth3to5_b5000--s3/itr_8.pkl'  # for direct runs
+snapshot_file = args.file or '/home/h/holas3/garage/data/archive/TEST4_Resumed_80itrs_discount0.99/Basic_runs/2020_03_09-21_34--Basic_run_80itrs_6maps_disc099_b5000--s1/itr_3.pkl'  # for direct runs
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
-new_skill_policy_file = args.skill_policy or '/home/h/holas3/garage/data/local/asa-train-new-skill/instant_run/final.pkl'  # for direct runs
+new_skill_policy_file = args.skill_policy or '/home/h/holas3/garage/sandbox/asa/data/local/asa-train-new-skill/2020_03_10-15_10--after_itr_3--For_all_disc099_Skill_sLLLs--s1/final.pkl'  # for direct runs
 
 # # DEBUG for runs without loaded skill
 # new_skill_policy_file = None
-# skill_policy_exp_name = 'MinibotRight'
+# # skill_policy_exp_name = 'MinibotRight'
+# skill_policy_exp_name = 'MinibotRandom'
 # new_skill_subpath = {
 #     'actions': [1, 1, 1],
 #     'start_observations': np.array([[0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # at corner
@@ -81,13 +82,15 @@ def run_task(*_):
                 MinibotForwardPolicy(env_spec=base_env.spec),
                 MinibotLeftPolicy(env_spec=base_env.spec),
                 new_skill_policy
-                # MinibotRightPolicy(env_spec=base_env.spec)  # DEBUG
+                # MinibotRightPolicy(env_spec=base_env.spec)   # DEBUG
+                # MinibotRandomPolicy(env_spec=base_env.spec)  # DEBUG
         ]
         trained_skill_policies_stop_funcs = [
                 lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
                 lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
                 new_skill_stop_func
-                # lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90° # DEBUG
+                # lambda path: len(path['actions']) >= 3  # 3 steps to rotate 90°     # DEBUG
+                # lambda path: len(path['actions']) >= 5  # 5 steps for random policy # DEBUG
         ]
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 
@@ -143,7 +146,7 @@ def run_task(*_):
                 skill_policy_prototype=skill_policy_prototype,
                 skill_policies=trained_skill_policies,
                 skill_stop_functions=trained_skill_policies_stop_funcs,
-                skill_max_timesteps=20
+                skill_max_timesteps=50  # TODO? was 20, changed to 50 like in asa_train_new_skill
         )
         # Link hrl_policy and hrl_env, so that hrl_env can use skills
         hrl_env.set_hrl_policy(hrl_policy)
@@ -162,9 +165,9 @@ def run_task(*_):
                 # Top algo kwargs
                     batch_size=5000,
                     max_path_length=100,
-                    n_itr=40,
+                    n_itr=80,
                     start_itr=saved_data['itr'] + 1,  # Continue from previous iteration number
-                    discount=0.99,
+                    discount=0.9,
                     force_batch_sampler=True,
                 low_algo_kwargs={
                     'batch_size': 1000,
@@ -175,7 +178,20 @@ def run_task(*_):
         )
 
         ## Launch training
-        asa_algo.train(sess=tf_session)
+        train_info = asa_algo.train(
+                sess=tf_session,
+                snapshot_mode='none'
+        )
+
+        ## Save last iteration
+        out_file = os.path.join(train_info['snapshot_dir'], 'final.pkl')
+        empty_samples_data = {'paths': None}
+        with open(out_file, 'wb') as file:
+            out_data = asa_algo.get_itr_snapshot(
+                itr=asa_algo.n_itr - 1,
+                samples_data=empty_samples_data
+            )
+            dill.dump(out_data, file)
 
 
 ## Run directly

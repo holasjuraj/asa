@@ -55,6 +55,16 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         return self._top_algo.init_opt()
 
     @overrides
+    def train(self, sess=None, snapshot_mode=None):
+        if snapshot_mode is not None:
+            logger.set_snapshot_mode(snapshot_mode)
+        last_average_return = super(AdaptiveSkillAcquisition, self).train(sess=sess)
+        return {
+            'last_average_return': last_average_return,
+            'snapshot_dir': logger.get_snapshot_dir()
+        }
+
+    @overrides
     def get_itr_snapshot(self, itr, samples_data):
         res = self._top_algo.get_itr_snapshot(itr, samples_data)
         # TODO? only include path actions and observations to snapshot in order to speed up saving

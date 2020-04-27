@@ -147,8 +147,7 @@ def run_task(*_):
         #         logger_snapshot_dir_before,
         #         'skill{}'.format(new_skill_id)
         # ))
-        logger.set_snapshot_mode('gap')
-        logger.set_snapshot_gap(max(1, np.floor(low_algo_kwargs['n_itr'] / 10)))
+        logger.set_snapshot_mode('none')
         logger.set_tensorboard_step_key('Iteration')
 
 
@@ -180,7 +179,7 @@ def run_task(*_):
 ## Run pickled
 seed = 3
 exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'For_all_Top_skill'
+exp_name_extra = 'For_all_disc09_Top_skill'
 
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
