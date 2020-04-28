@@ -1,0 +1,31 @@
+======== Data migration from Saturn ========
+Steps:
+    1) Compression & split
+    2) Transfer & delete remote archive
+    3) Decompression & delete local archive
+    4) Delete remote *.pkl
+Progress:
+    - : pending
+    @ : in progress
+    + : done
+    X : blocked
+
+
+==== Data ====
+- TEST6:
+    +++X    Basic_runs
+    +++-    Resumed_with_sLLLs_disc099_skill
+
+- TEST7:
+    +++X    Basic_runs
+    ++++    Resumed_with_sLLLs_disc099_skill
+    XXXX    Resumed_with_Top_skill
+    XXXX    Resumed_with_Random_skill
+    XXXX    Skill_policies
+
+
+==== Split & merge ====
+https://superuser.com/questions/160364/what-is-the-fastest-and-most-reliable-way-to-split-a-50gb-binary-file-into-chunk
+
+split -db 1G infile prefix
+cat prefix* > outfile

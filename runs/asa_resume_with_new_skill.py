@@ -13,7 +13,8 @@ from sandbox.asa.policies import HierarchicalPolicy
 from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy, MinibotRightPolicy, MinibotRandomPolicy
 from sandbox.asa.policies import CategoricalMLPSkillIntegrator
 
-from garage.tf.algos import TRPO                     # Policy optimization algorithm
+from garage.tf.algos import TRPO, PPO, NPO          # Policy optimization algorithm
+from garage.tf.algos.npo import PGLoss
 from garage.tf.envs import TfEnv                     # Environment wrapper
 from garage.tf.policies import CategoricalMLPPolicy  # Policy networks
 from garage.misc.instrument import run_experiment    # Experiment-running util
@@ -160,7 +161,7 @@ def run_task(*_):
                 env=tf_hrl_env,
                 hrl_policy=hrl_policy,
                 baseline=baseline,
-                top_algo_cls=TRPO,
+                top_algo_cls=PPO,  # DEBUG Replaced TRPO with DDPG/NPO
                 low_algo_cls=TRPO,
                 # Top algo kwargs
                     batch_size=5000,
@@ -169,12 +170,13 @@ def run_task(*_):
                     start_itr=saved_data['itr'] + 1,  # Continue from previous iteration number
                     discount=0.9,
                     force_batch_sampler=True,
-                low_algo_kwargs={
-                    'batch_size': 1000,
-                    'max_path_length': 30,
-                    'n_itr': 25,
-                    'discount': 0.99,
-                }
+                    # pg_loss='clip',  # DEBUG for NPO
+                    low_algo_kwargs={
+                        'batch_size': 1000,
+                        'max_path_length': 30,
+                        'n_itr': 25,
+                        'discount': 0.99,
+                    }
         )
 
         ## Launch training
@@ -202,7 +204,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3
 exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'From_all_manual'
+exp_name_extra = 'From_i11_manual_pnl005_disc09_PPO'
 
 # Skill policy experiment name
 if new_skill_policy_file:
@@ -211,7 +213,7 @@ if new_skill_policy_file:
     except IndexError: skill_policy_exp_name = skill_policy_dir
 
 # Skill integration method
-skill_integration_method = CategoricalMLPSkillIntegrator.Method.START_OBSS_SKILLS_AVG
+skill_integration_method = CategoricalMLPSkillIntegrator.Method.SUBPATH_SKILLS_SMOOTH_AVG
 skill_integration_method = \
         skill_integration_method.value if args.integration_method == 'keep' \
         else CategoricalMLPSkillIntegrator.get_method_str_by_index(int(args.integration_method))
