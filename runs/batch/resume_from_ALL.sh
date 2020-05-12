@@ -67,8 +67,8 @@ mkdir -p $failed_dir
 # Launch all trainings
 num_pids=0
 
-#for integ_method in $(seq 0 5); do
-for integ_method in 3; do  # DEBUG -- ONLY USING INTEGRATOR "SUBPATH_SKILLS_AVG"
+for integ_method in $(seq 0 5); do
+#for integ_method in 3; do  # DEBUG only use specific integrator (3 = SUBPATH_SKILLS_AVG)
 
   for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
     seed=`echo "$seed_dir" | sed -n "s/^.*--s\([0-9]\+\).*$/\1/p"`

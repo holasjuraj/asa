@@ -5,7 +5,6 @@ import dill
 import argparse
 import os
 from datetime import datetime
-import numpy as np
 
 
 from sandbox.asa.envs import SkillLearningEnv
@@ -18,7 +17,7 @@ from garage.misc import logger
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
 # Parse arguments
@@ -31,7 +30,9 @@ parser.add_argument('-s', '--seed',
                     metavar='SEED', default='keep')
 args = parser.parse_args()
 
-snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/2020_01_30-14_21--Basic_run_25itrs_subpth3to5_b5000--s3/itr_8.pkl'  # for direct runs
+snapshot_file = args.file or \
+                '/home/h/holas3/garage/data/local/asa-test/2020_01_30-14_21--Basic_run_25itrs_subpth3to5_b5000--s3/itr_8.pkl'
+                # DEBUG For direct runs: path to snapshot file (itr_N.pkl) from which to train new skill
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 
 
@@ -84,7 +85,7 @@ def run_task(*_):
                 pad=max_length))
 
         top_subpath = frequent_paths[0]
-        # # DEBUG always use sLLLs
+        # # DEBUG always use path sLLLs and its parameters (obss)
         # top_subpath = path_trie.item_for_path([0, 1, 1, 1, 0], action_map=action_map)
         # if top_subpath is None:
         #     print('Path sLLLs is not in trie')
@@ -176,15 +177,19 @@ def run_task(*_):
 ## Run directly
 # run_task()
 
-## Run pickled
-seed = 3
-exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'For_all_disc09_Top_skill'
 
+## Run pickled
+# General experiment settings
+seed = 3                    # Will be ignored if --seed option is used
+exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
+exp_name_extra = 'For_all_disc09_Top_skill'  # Name of run
+
+# Seed
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
        else int(args.seed)
 
+# Launch training
 run_experiment(
         run_task,
         # Configure TF

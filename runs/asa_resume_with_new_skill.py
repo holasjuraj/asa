@@ -13,8 +13,7 @@ from sandbox.asa.policies import HierarchicalPolicy
 from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy, MinibotRightPolicy, MinibotRandomPolicy
 from sandbox.asa.policies import CategoricalMLPSkillIntegrator
 
-from garage.tf.algos import TRPO, PPO, NPO          # Policy optimization algorithm
-from garage.tf.algos.npo import PGLoss
+from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.envs import TfEnv                     # Environment wrapper
 from garage.tf.policies import CategoricalMLPPolicy  # Policy networks
 from garage.misc.instrument import run_experiment    # Experiment-running util
@@ -22,7 +21,7 @@ from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 # Parse arguments
@@ -41,11 +40,15 @@ parser.add_argument('-s', '--seed',
                     metavar='SEED', default='keep')
 args = parser.parse_args()
 
-snapshot_file = args.file or '/home/h/holas3/garage/data/archive/TEST4_Resumed_80itrs_discount0.99/Basic_runs/2020_03_09-21_34--Basic_run_80itrs_6maps_disc099_b5000--s1/itr_3.pkl'  # for direct runs
+snapshot_file = args.file or \
+                '/home/h/holas3/garage/data/archive/TEST4_Resumed_80itrs_discount0.99/Basic_runs/2020_03_09-21_34--Basic_run_80itrs_6maps_disc099_b5000--s1/itr_3.pkl'
+                # DEBUG For direct runs: path to snapshot file (itr_N.pkl) to start from
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
-new_skill_policy_file = args.skill_policy or '/home/h/holas3/garage/sandbox/asa/data/local/asa-train-new-skill/2020_03_10-15_10--after_itr_3--For_all_disc099_Skill_sLLLs--s1/final.pkl'  # for direct runs
+new_skill_policy_file = args.skill_policy or \
+                '/home/h/holas3/garage/sandbox/asa/data/local/asa-train-new-skill/2020_03_10-15_10--after_itr_3--For_all_disc099_Skill_sLLLs--s1/final.pkl'
+                # DEBUG For direct runs: path to file with new skill policy
 
-# # DEBUG for runs without loaded skill
+# # DEBUG For runs without loaded skill - to use Minibot*Policy as new skill
 # new_skill_policy_file = None
 # # skill_policy_exp_name = 'MinibotRight'
 # skill_policy_exp_name = 'MinibotRandom'
@@ -83,15 +86,15 @@ def run_task(*_):
                 MinibotForwardPolicy(env_spec=base_env.spec),
                 MinibotLeftPolicy(env_spec=base_env.spec),
                 new_skill_policy
-                # MinibotRightPolicy(env_spec=base_env.spec)   # DEBUG
-                # MinibotRandomPolicy(env_spec=base_env.spec)  # DEBUG
+                # MinibotRightPolicy(env_spec=base_env.spec)   # DEBUG use MinibotRightPolicy as new skill
+                # MinibotRandomPolicy(env_spec=base_env.spec)  # DEBUG use MinibotRandomPolicy as new skill
         ]
         trained_skill_policies_stop_funcs = [
                 lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
                 lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
                 new_skill_stop_func
-                # lambda path: len(path['actions']) >= 3  # 3 steps to rotate 90°     # DEBUG
-                # lambda path: len(path['actions']) >= 5  # 5 steps for random policy # DEBUG
+                # lambda path: len(path['actions']) >= 3  # 3 steps to rotate 90°     # DEBUG use MinibotRightPolicy as new skill
+                # lambda path: len(path['actions']) >= 5  # 5 steps for random policy # DEBUG use MinibotRandomPolicy as new skill
         ]
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 
@@ -161,7 +164,7 @@ def run_task(*_):
                 env=tf_hrl_env,
                 hrl_policy=hrl_policy,
                 baseline=baseline,
-                top_algo_cls=PPO,  # DEBUG Replaced TRPO with DDPG/NPO
+                top_algo_cls=TRPO,
                 low_algo_cls=TRPO,
                 # Top algo kwargs
                     batch_size=5000,
@@ -170,13 +173,12 @@ def run_task(*_):
                     start_itr=saved_data['itr'] + 1,  # Continue from previous iteration number
                     discount=0.9,
                     force_batch_sampler=True,
-                    # pg_loss='clip',  # DEBUG for NPO
-                    low_algo_kwargs={
-                        'batch_size': 1000,
-                        'max_path_length': 30,
-                        'n_itr': 25,
-                        'discount': 0.99,
-                    }
+                low_algo_kwargs={
+                    'batch_size': 1000,
+                    'max_path_length': 30,
+                    'n_itr': 25,
+                    'discount': 0.99,
+                }
         )
 
         ## Launch training
@@ -202,9 +204,9 @@ def run_task(*_):
 
 ## Run pickled
 # General experiment settings
-seed = 3
-exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'From_i11_manual_pnl005_disc09_PPO'
+seed = 3                    # Will be ignored if --seed option is used
+exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
+exp_name_extra = 'From_all_manual'  # Name of run
 
 # Skill policy experiment name
 if new_skill_policy_file:
@@ -213,7 +215,7 @@ if new_skill_policy_file:
     except IndexError: skill_policy_exp_name = skill_policy_dir
 
 # Skill integration method
-skill_integration_method = CategoricalMLPSkillIntegrator.Method.SUBPATH_SKILLS_SMOOTH_AVG
+skill_integration_method = CategoricalMLPSkillIntegrator.Method.SUBPATH_SKILLS_AVG
 skill_integration_method = \
         skill_integration_method.value if args.integration_method == 'keep' \
         else CategoricalMLPSkillIntegrator.get_method_str_by_index(int(args.integration_method))

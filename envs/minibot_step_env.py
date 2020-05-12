@@ -310,7 +310,6 @@ class MinibotStepEnv(AsaEnv, Serializable):
         self.render_prev_pos = self.agent_pos
 
         # Choose output method
-        mode = 'rgb-array'  # DEBUG
         if mode == 'human':
             # plt.show(block=False)
             raise NotImplementedError
@@ -329,7 +328,7 @@ class MinibotStepEnv(AsaEnv, Serializable):
 
     # noinspection PyMethodMayBeStatic
     def save_rendered_plot(self):
-        plt.scatter(*self.agent_pos, marker='x', s=50, c='r')  # DEBUG to mark agent`s end position
+        plt.scatter(*self.agent_pos, marker='x', s=50, c='r')  # to mark agent`s end position
         directory = logger.get_snapshot_dir()
         if directory is None:
             directory = '~/garage/data/local/asa/instant-run'
