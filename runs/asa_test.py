@@ -12,7 +12,7 @@ from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.baselines import GaussianMLPBaseline  # Baseline for Advantage function { A(s, a) = Q(s, a) - B(s) }
-from sandbox.asa.envs import MinibotEnv              # Environment
+from sandbox.asa.envs import MinibotStepEnv          # Environment
 from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
@@ -20,7 +20,7 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 # Parse arguments
@@ -32,7 +32,7 @@ parser.add_argument('-s', '--seed',
 args = parser.parse_args()
 
 
-plot = True
+# plot = True
 # if plot:
 #     # Workaround to create Qt application in main thread
 #     import matplotlib
@@ -46,7 +46,7 @@ def run_task(*_):
     ## Lower level environment & policies
     # Base (original) environment.
     base_env = normalize(
-                MinibotEnv(
+                MinibotStepEnv(
                     use_maps='all',  # [0,1]
                     discretized=True,
                     states_cache=dict()
@@ -107,13 +107,13 @@ def run_task(*_):
             # Top algo kwargs
                 batch_size=5000,
                 max_path_length=100,
-                n_itr=25,
-                discount=0.99,
+                n_itr=80,
+                discount=0.9,
                 force_batch_sampler=True,
             low_algo_kwargs={
-                'batch_size': 1000,
-                'max_path_length': 30,
-                'n_itr': 25,
+                'batch_size': 2500,
+                'max_path_length': 50,
+                'n_itr': 500,
                 'discount': 0.99,
             }
     )
@@ -130,20 +130,23 @@ def run_task(*_):
 ## Run directly
 # run_task()
 
+
 ## Run pickled
-# Erase snapshots from previous instant run
+# # Erase snapshots from previous instant run
 # import shutil
 # shutil.rmtree('/home/h/holas3/garage/data/local/asa_test/instant_run', ignore_errors=False)
 
-# Run experiment
-seed = 3
-exp_name_direct = None  # 'instant_run'
-exp_name_extra = 'Basic_run_25itrs_subpth3to5_b5000'
+# General experiment settings
+seed = 3                    # Will be ignored if --seed option is used
+exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
+exp_name_extra = 'Basic_run_80itrs_6maps_pnl005_disc09'  # Name of run
 
+# Seed
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
        else int(args.seed)
 
+# Launch training
 run_experiment(
         run_task,
         # Configure TF

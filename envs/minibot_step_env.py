@@ -18,7 +18,7 @@ from garage.misc import logger
 
 
 
-class MinibotEnv(AsaEnv, Serializable):
+class MinibotStepEnv(AsaEnv, Serializable):
     """
     Simulated two-wheeled robot in an environment with obstacles.
 
@@ -35,7 +35,8 @@ class MinibotEnv(AsaEnv, Serializable):
     Agent`s actions are optionally discretized from {<-1,-0.33> , <-0.33,0.33> , <0.33,1>} to [-1, 0, 1],
     to ensure full motor output (bang-bang policy).
 
-    Agent receives reward of 1 if it reaches the goal and -1 if it falls into a hole.
+    Agent receives reward of 1 if it reaches the goal, -1 if it falls into a hole, and penalty for each
+    step (of value -STEP_PENALTY).
 
 
     Maps legend:
@@ -106,6 +107,7 @@ class MinibotEnv(AsaEnv, Serializable):
     ]
     map_colors = ['maroon', 'midnightblue', 'darkgreen', 'darkgoldenrod']
     EPSILON = 0.0001
+    STEP_PENALTY = 0.05
     metadata = {'render.modes': ['rgb_array']}
 
 
@@ -250,7 +252,7 @@ class MinibotEnv(AsaEnv, Serializable):
             reward = -1
         elif next_state_type in ['F', 'S']:
             done = False
-            reward = 0
+            reward = -self.STEP_PENALTY
         elif next_state_type == 'G':
             done = True
             reward = 1
@@ -321,7 +323,7 @@ class MinibotEnv(AsaEnv, Serializable):
             #     os.makedirs(dir)
             # plt.savefig(os.path.join(dir, 'demo_run.png'))
         else:
-            super(MinibotEnv, self).render(mode=mode)  # just raise an exception
+            super(MinibotStepEnv, self).render(mode=mode)  # just raise an exception
 
 
     # noinspection PyMethodMayBeStatic

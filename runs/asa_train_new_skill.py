@@ -5,10 +5,9 @@ import dill
 import argparse
 import os
 from datetime import datetime
-import numpy as np
 
 
-from sandbox.asa.envs import HierarchizedEnv, SkillLearningEnv
+from sandbox.asa.envs import SkillLearningEnv
 from sandbox.asa.utils.path_trie import PathTrie
 
 from garage.tf.envs import TfEnv                     # Environment wrapper
@@ -18,7 +17,7 @@ from garage.misc import logger
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
 # Parse arguments
@@ -31,7 +30,9 @@ parser.add_argument('-s', '--seed',
                     metavar='SEED', default='keep')
 args = parser.parse_args()
 
-snapshot_file = args.file or '/home/h/holas3/garage/data/local/asa-test/2020_01_30-14_21--Basic_run_25itrs_subpth3to5_b5000--s3/itr_8.pkl'  # for direct runs
+snapshot_file = args.file or \
+                '/home/h/holas3/garage/data/local/asa-test/2020_01_30-14_21--Basic_run_25itrs_subpth3to5_b5000--s3/itr_8.pkl'
+                # DEBUG For direct runs: path to snapshot file (itr_N.pkl) from which to train new skill
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 
 
@@ -52,7 +53,7 @@ def run_task(*_):
         action_map = {0: 's', 1: 'L', 2: 'R'}
         min_f_score = 1
         max_results = 10
-        aggregations = ['mean']  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
+        aggregations = []  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
 
         paths = saved_data['paths']
         path_trie = PathTrie(saved_data['hrl_policy'].num_skills)
@@ -84,6 +85,15 @@ def run_task(*_):
                 pad=max_length))
 
         top_subpath = frequent_paths[0]
+        # # DEBUG always use path sLLLs and its parameters (obss)
+        # top_subpath = path_trie.item_for_path([0, 1, 1, 1, 0], action_map=action_map)
+        # if top_subpath is None:
+        #     print('Path sLLLs is not in trie')
+        #     exit(1)
+        # if top_subpath['count'] < 10:
+        #     print('Path sLLLs has only count = {}'.format(top_subpath['count']))
+        #     exit(1)
+        # # /DEBUG
         start_obss = top_subpath['start_observations']
         end_obss   = top_subpath['end_observations']
 
@@ -120,7 +130,7 @@ def run_task(*_):
         # DEBUG set custom training params (should`ve been set in asa_test)
         low_algo_kwargs['batch_size'] = 2500
         low_algo_kwargs['max_path_length'] = 50
-        low_algo_kwargs['n_itr'] = 150
+        low_algo_kwargs['n_itr'] = 500
 
         # Algorithm
         algo = low_algo_cls(
@@ -138,8 +148,7 @@ def run_task(*_):
         #         logger_snapshot_dir_before,
         #         'skill{}'.format(new_skill_id)
         # ))
-        logger.set_snapshot_mode('gap')
-        logger.set_snapshot_gap(max(1, np.floor(low_algo_kwargs['n_itr'] / 10)))
+        logger.set_snapshot_mode('none')
         logger.set_tensorboard_step_key('Iteration')
 
 
@@ -168,15 +177,19 @@ def run_task(*_):
 ## Run directly
 # run_task()
 
-## Run pickled
-seed = 3
-exp_name_direct = 'instant_run'
-exp_name_extra = 'Skill_from_s3_itr8_path0_500itrs_len50_VectorisedSampler_Cache'
 
+## Run pickled
+# General experiment settings
+seed = 3                    # Will be ignored if --seed option is used
+exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
+exp_name_extra = 'For_all_disc09_Top_skill'  # Name of run
+
+# Seed
 seed = seed if args.seed == 'keep' \
        else None if args.seed == 'random' \
        else int(args.seed)
 
+# Launch training
 run_experiment(
         run_task,
         # Configure TF
@@ -186,7 +199,7 @@ run_experiment(
         exp_prefix='asa-train-new-skill',
         exp_name=exp_name_direct or \
                  (datetime.now().strftime('%Y_%m_%d-%H_%M')
-                  # + '--after_' + snapshot_name
+                  + '--after_' + snapshot_name
                   + (('--' + exp_name_extra) if exp_name_extra else '')
                   + (('--s' + str(seed)) if seed else '')
                  ),

@@ -1,12 +1,14 @@
 #!/bin/bash
 # Launch asa_test.py for all seeds.
 
-max_parallel=4
+max_parallel=8
 max_seed=8
 
 # Make tmp dir
 tmp_dir=$(date '+asa_test_output-%Y_%m_%d-%H_%M')
 mkdir $tmp_dir
+script="${tmp_dir}/asa_test.py"
+cp /home/h/holas3/garage/sandbox/asa/runs/asa_test.py $script
 
 # Launch all trainings
 num_pids=0
@@ -26,7 +28,7 @@ for seed in $(seq 1 $max_seed); do
   (
     out="${tmp_dir}/${seed}_out.txt"
     printf "Launching training for seed %s\n" $seed
-    ~holas3/garage/sandbox/asa/runs/asa_test.py --seed $seed &> $out && rm $out
+    $script --seed $seed &> $out  # && rm $out
     printf "Training for seed %s finished\n" $seed
   ) &
   back_pids[$num_pids]=$!
@@ -39,8 +41,8 @@ for p in ${back_pids[*]}; do
   wait $p
 done
 
-# Remove tmp dir if empty
-rmdir $tmp_dir
+## Remove tmp dir if empty
+#rmdir $tmp_dir
 
 echo "==== ALL DONE ===="
 

@@ -118,8 +118,9 @@ class PathTrie:
         n: length of total string = num_steps
         m: length of searched substring = sq_len
         p_i: probability of letter/action = (1 / self.num_actions) for all i
-        Formula = (n + num_eps*m - num_eps*1) * (1 / self.num_actions)^m
+        Formula = (n - num_eps*m + num_eps*1) * (1 / self.num_actions)^m
         '''
+        # TODO use empirical skill probabilities instead of uniform
         null_cnt = (num_steps + num_eps * (-sq_len+1)) / (self.num_actions**sq_len)
         return cnt / null_cnt
 
@@ -153,6 +154,62 @@ class PathTrie:
                               for j in range(count)] for i in range(count)])    # lower triangle
             dist = dist + dist.T    # full distance matrix
             result['medoid'] = observations[dist.sum(axis=0).argmin()]
+        return result
+
+    # noinspection PyMethodMayBeStatic
+    def map_actions_to_text(self, actions, action_map=None):
+        """
+        Convert sequence of actions into readable form using action_map.
+        If action_map is None, then None is returned
+        :param actions: list - sequence of actions
+        :param action_map: dictionary from action numbers into chars (for better readability)
+        """
+        if action_map is None:
+            return None
+        else:
+            return ''.join(map(lambda a: action_map[a], actions))
+
+    def item_for_path(self,
+                      path,
+                      action_map=None,
+                      null_hyp_opts=None,
+                      aggregations='all'):
+        """
+        Return trie node for given path, or None if such node does not exist or is empty
+        :param path: list of actions (integers)
+        :param action_map: dictionary from action numbers into chars (for better readability)
+        :param null_hyp_opts: override trie's counts of:
+                              {'num_paths' : number of paths/roll-outs/episodes collected within the batch (int),
+                               'num_steps' : total number of steps taken in batch (int)}
+        :param aggregations: list of aggregations to compute on start/end observations, or 'all'
+        :return: {actions, actions_text, count, f_score,
+                  start_observations, end_observations, agg_observations, trie_node}
+        """
+        top = list(reversed(path))
+        if not null_hyp_opts:
+            null_hyp_opts = {}
+
+        node = self.root
+        for action in top:
+            if not node.has_children:
+                return None
+            node = node[action]
+        if node.count == 0:
+            return None  # empty node
+
+        c = node.count
+        f = self.apply_null_hyp(top, c, null_hyp_opts)
+        starts_ends = np.concatenate([node.start_observations, node.end_observations], axis=1)
+        result = {
+                'actions': path,
+                'actions_text': self.map_actions_to_text(path, action_map),
+                'count': c,
+                'f_score': f,
+                'start_observations': node.start_observations,
+                'end_observations': node.end_observations,
+                'agg_observations': self.aggregate_observations(starts_ends, aggregations),
+                'trie_node': node
+            }
         return result
 
     def items(self,
@@ -190,17 +247,6 @@ class PathTrie:
             """
             return list(reversed(top))
 
-        def map_actions_to_text(actions):
-            """
-            Convert sequence of actions into readable form using action_map.
-            If action_map is None, then None is returned
-            :param actions: list - sequence of actions
-            """
-            if action_map is None:
-                return None
-            else:
-                return ''.join(map(lambda a: action_map[a], actions))
-
         def collect_subtree_items(node, top):
             """
             Recursive method to collect all items (paths and their counts, f-scores) in a subtree.
@@ -214,7 +260,7 @@ class PathTrie:
                     actions = top_to_actions(top)
                     paths.append({
                             'actions': actions,
-                            'actions_text': map_actions_to_text(actions),
+                            'actions_text': self.map_actions_to_text(actions, action_map),
                             'count': c,
                             'f_score': f,
                             'start_observations': node.start_observations,
@@ -273,3 +319,6 @@ if __name__ == '__main__':
 
     for p in trie.items(action_map={0: 'L', 1: 's'}, min_count=2):
         print('{actions_text:12} {count:3} {f_score:5.2f} {agg_observations}'.format(**p))
+
+    my_item = trie.item_for_path([0, 0, 1], action_map={0: 'L', 1: 's'})
+    print('My item:\n{actions_text:12} {count:3} {f_score:5.2f} {agg_observations}'.format(**my_item))

@@ -1,0 +1,29 @@
+RESUME:
+    TEST6
+    Env: penalty 0.05, dicount 0.99
+    Skill: sLLLs from TEST4
+runs/batch/resume_from_ALL.sh -d data/archive/TEST6_Resumed_80itrs_discount0.99_pnl0.05/Basic_runs -p data/archive/TEST4_Resumed_80itrs_discount0.99/Skill_policies -N disc099 -n LLL -g 4 -I 40
+
+RESUME:
+    TEST7
+    Env: penalty 0.05, dicount 0.9
+    Skill: sLLLs from TEST4
+runs/batch/resume_from_ALL.sh -d data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Basic_runs -p data/archive/TEST4_Resumed_80itrs_discount0.99/Skill_policies -N disc09_ -n LLL -g 4 -I 40
+
+NEW SKILL:
+    TEST7
+    Env: penalty 0.05, dicount 0.9
+    Skill: Top
+runs/batch/train_new_skills.sh -d data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Basic_runs -n Top -g 4
+
+RESUME:
+    TEST7
+    Env: penalty 0.05, dicount 0.9
+    Skill: Top skill from TEST7
+runs/batch/resume_from_ALL.sh -d data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Basic_runs -p data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Skill_policies -N disc09_ -n Top -g 4 -I 40
+
+RESUME:
+    TEST7
+    Env: penalty 0.05, dicount 0.9
+    Skill: Random policy
+runs/batch/resume_from_ALL.sh -d data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Basic_runs -P -N disc09_ -n Random -g 4 -I 40
