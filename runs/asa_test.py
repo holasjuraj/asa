@@ -12,7 +12,7 @@ from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.baselines import GaussianMLPBaseline  # Baseline for Advantage function { A(s, a) = Q(s, a) - B(s) }
-from sandbox.asa.envs import MinibotStepEnv          # Environment
+from sandbox.asa.envs import MinibotEnv              # Environment
 from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
@@ -46,7 +46,7 @@ def run_task(*_):
     ## Lower level environment & policies
     # Base (original) environment.
     base_env = normalize(
-                MinibotStepEnv(
+                MinibotEnv(
                     use_maps='all',  # [0,1]
                     discretized=True,
                     states_cache=dict()
