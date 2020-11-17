@@ -3,7 +3,7 @@ import matplotlib
 matplotlib.use('qt5Agg')
 import matplotlib.pyplot as plt
 
-from minibot_env import MinibotEnv
+from sandbox.asa.envs import MinibotEnv
 
 
 class TestBot(MinibotEnv):
@@ -53,7 +53,7 @@ def plot_path(env, path):
     plt.scatter(*goal,  c='r', marker='x', s=50 )
     plt.scatter(*holes, c='k', marker='v', s=100)
     plt.gca().add_collection(PatchCollection([Rectangle(xy-0.5, 1, 1) for xy in walls.T], color='navy'))
-    
+
     # Plot path
     # Starting position
     (start_r,), (start_c,) = np.nonzero(m == 'S')
