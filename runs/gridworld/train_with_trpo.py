@@ -22,9 +22,7 @@ plot = True
 
 def run_task(*_):
 
-    env = TfEnv(normalize(GridWorldEnv(
-        desc='8x8_move_goal'
-    )))
+    env = TfEnv(normalize(GridWorldEnv()))
 
     policy = CategoricalMLPPolicy(
             env_spec=env.spec,

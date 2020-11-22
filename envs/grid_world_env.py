@@ -1,10 +1,12 @@
-import gym
 import numpy as np
 
+from gym.spaces import Box, Discrete
 from garage.core import Serializable
 from garage.envs import Step
 from garage.misc.overrides import overrides
-from gym.spaces import Box
+
+from sandbox.asa.envs import AsaEnv
+
 
 MAPS = {
     "chain": ["GFFFFFFFFFFFFFSFFFFFFFFFFFFFG"],
@@ -43,145 +45,148 @@ MAPS = {
 }   # yapf: disable
 
 
-class GridWorldEnv(gym.Env, Serializable):
+class GridWorldEnv(AsaEnv, Serializable):
     """
-    'S' : starting point
-    'F' or '.': free space
-    'W' or 'x': wall
-    'H' or 'o': hole (terminates episode)
-    'G' : goal
+    TODO add class description
 
-
+    Maps legend:
+        'S' : starting point
+        'F' / '.' / ' ': free space
+        'W' / 'x' / '#': wall
+        'H' / 'O': hole (terminates episode)
+        'G' : goal
     """
+    MAP = [
+            "S.......",
+            "........",
+            "...H....",
+            ".....H..",
+            "...H....",
+            ".HH...H.",
+            ".H..H.H.",
+            "...H...G"
+          ]
+    STEP_PENALTY = 0  # DEBUG changed from 0.05
 
-    def __init__(self, desc='4x4'):
-        self.orig_desc = desc
-        plan = desc
-        if isinstance(desc, str):
-            plan = MAPS[desc]
-        plan = np.array(list(map(list, plan)))
-        plan[plan == '.'] = 'F'
-        plan[plan == 'o'] = 'H'
-        plan[plan == 'x'] = 'W'
-        self.desc = plan
-        self.n_row, self.n_col = plan.shape
-        (start_x, ), (start_y, ) = np.nonzero(plan == 'S')
-        self.start_state = start_x * self.n_col + start_y
-        self.state = None
-        self.domain_fig = None
+
+    # noinspection PyMissingConstructor
+    def __init__(self):
+        # Normalize char map
+        m = np.array([list(row.upper()) for row in self.MAP])
+        m[np.logical_or(m == '.', m == ' ')] = 'F'
+        m[np.logical_or(m == 'X', m == '#')] = 'W'
+        m[m == 'O'] = 'H'
+        self.map = m
+
+        # Set state
+        self.agent_pos = None
+        self.moving_goal = 'G' not in self.map
+        self.n_row, self.n_col = self.map.shape
 
         # Always call Serializable constructor last
         Serializable.quick_init(self, locals())
 
-    def reset(self):
-        if self.orig_desc == '8x8_move_goal':
-            self.desc[self.desc == 'S'] = 'F'
-            self.desc[self.desc == 'G'] = 'F'
-            while True:
-                x, y = np.random.randint(self.n_col), np.random.randint(self.n_row)
-                if self.desc[x, y] == 'F':
-                    self.desc[x, y] = 'S'
-                    self.start_state = x * self.n_col + y
-                    break
-            while True:
-                x, y = np.random.randint(self.n_col), np.random.randint(self.n_row)
-                if self.desc[x, y] == 'F':
-                    self.desc[x, y] = 'G'
-                    break
-        self.state = self.start_state
-        start_x = self.state // self.n_col
-        start_y = self.state % self.n_col
-        (goal_x,), (goal_y,) = np.nonzero(self.desc == 'G')
-        return np.array([start_x, start_y, goal_x, goal_y])
 
-    @staticmethod
-    def action_from_direction(d):
+    @property
+    def action_space(self):
         """
-        Return the action corresponding to the given direction. This is a
-        helper method for debugging and testing purposes.
-        :return: the action index corresponding to the given direction
+        Up / right / down / left
         """
-        return dict(left=0, down=1, right=2, up=3)[d]
+        return Discrete(4)
+
+    @property
+    def observation_space(self):
+        """
+        Position of agent ++ position of goal
+        """
+        return Box(low=np.array([0, 0, 0, 0]),
+                   high=np.array([self.n_col, self.n_row, self.n_col, self.n_row]) - 1,
+                   dtype=np.float32)
+
+
+    @overrides
+    def get_current_obs(self):
+        """
+        Position of agent ++ position of goal
+        """
+        r, c = self.agent_pos
+        (goal_r,), (goal_c,) = np.nonzero(self.map == 'G')
+        return np.array([r, c, goal_r, goal_c])
+
+
+    def reset(self):
+        """
+        Initialize the agent.
+        If self.moving_goal: randomly choose start point and goal.
+        """
+        if self.moving_goal:
+            self.map[self.map == 'S'] = 'F'
+            self.map[self.map == 'G'] = 'F'
+            while True:
+                r, c = np.random.randint(self.n_row), np.random.randint(self.n_col)
+                if self.map[r, c] == 'F':
+                    self.map[r, c] = 'S'
+                    break
+            while True:
+                r, c = np.random.randint(self.n_row), np.random.randint(self.n_col)
+                if self.map[r, c] == 'F':
+                    self.map[r, c] = 'G'
+                    break
+        (start_r,), (start_c,) = np.nonzero(self.map == 'S')
+        self.agent_pos = np.array([start_r, start_c])
+        return self.get_current_obs()
+
+
+    @overrides
+    def reset_to_state(self, start_obs, **kwargs):
+        """
+        Choose state that matches given observation.
+        """
+        # TODO
+        return self.reset()
+
 
     def step(self, action):
         """
-        action map:
-        0: left
-        1: down
-        2: right
-        3: up
-        :param action: should be a one-hot vector encoding the action
-        :return:
+        Action map = {0: up, 1: right, 2: down, 3: left}
+        :param action: scalar encoding the action
         """
-        possible_next_states = self.get_possible_next_states(
-            self.state, action)
+        # Set new state
+        moves = np.array([[-1, 0], [0, 1], [1, 0], [0, -1]])
+        next_pos = np.clip(self.agent_pos + moves[action],
+                           a_min=[0, 0],
+                           a_max=[self.n_row - 1, self.n_col - 1])
+        next_state_type = self.map[next_pos[0], next_pos[1]]
+        if next_state_type != 'W':
+            self.agent_pos = next_pos
+        else:
+            next_state_type = 'F'  # agent stays on free tile
 
-        probs = [x[1] for x in possible_next_states]
-        next_state_idx = np.random.choice(len(probs), p=probs)
-        next_state = possible_next_states[next_state_idx][0]
-
-        next_x = next_state // self.n_col
-        next_y = next_state % self.n_col
-
-        next_state_type = self.desc[next_x, next_y]
+        # Determine reward and termination
         if next_state_type == 'H':
             done = True
-            reward = 0
+            reward = -1
         elif next_state_type in ['F', 'S']:
             done = False
-            reward = 0
+            reward = -self.STEP_PENALTY
         elif next_state_type == 'G':
             done = True
             reward = 1
         else:
             raise NotImplementedError
-        self.state = next_state
-        (goal_x,), (goal_y,) = np.nonzero(self.desc == 'G')
-        return Step(observation=np.array([next_x, next_y, goal_x, goal_y]),
+
+        # Return observation and others
+        obs = self.get_current_obs()
+        return Step(observation=obs,
                     reward=reward,
                     done=done)
 
-    def get_possible_next_states(self, state, action):
-        """
-        Given the state and action, return a list of possible next states and
-        their probabilities. Only next states with nonzero probabilities will
-        be returned
-        :param state: start state
-        :param action: action
-        :return: a list of pairs (s', p(s'|s,a))
-        """
-        # assert self.observation_space.contains(state)
-        # assert self.action_space.contains(action)
 
-        x = state // self.n_col
-        y = state % self.n_col
-        coords = np.array([x, y])
-
-        increments = np.array([[0, -1], [1, 0], [0, 1], [-1, 0]])
-        next_coords = np.clip(coords + increments[action], [0, 0],
-                              [self.n_row - 1, self.n_col - 1])
-        next_state = next_coords[0] * self.n_col + next_coords[1]
-        state_type = self.desc[x, y]
-        next_state_type = self.desc[next_coords[0], next_coords[1]]
-        if next_state_type == 'W' or state_type == 'H' or state_type == 'G':
-            return [(state, 1.)]
-        else:
-            return [(next_state, 1.)]
-
-    @property
-    def action_space(self):
-        return gym.spaces.Discrete(4)
-
-    @property
-    def observation_space(self):
-        # return gym.spaces.Discrete(self.n_row * self.n_col)
-        return Box(low=np.array([0, 0, 0, 0]),
-                   high=np.array([self.n_col, self.n_row, self.n_col, self.n_row]) - 1,
-                   dtype=np.float32)
 
     @overrides
     def render(self, mode='human'):
         pass
+
 
     @overrides
     def log_diagnostics(self, paths):
