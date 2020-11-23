@@ -11,18 +11,25 @@ from garage.tf.policies import CategoricalMLPPolicy  # Policy network
 from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
-plot = True
-# if plot:
-#     # Workaround to create Qt application in main thread
-#     import matplotlib
-#     matplotlib.use('qt5Agg')
-#     import matplotlib.pyplot as plt
-#     plt.figure()
+live_plot = True
+if live_plot:
+    # Workaround to create Qt application in main thread
+    import matplotlib
+    matplotlib.use('qt5Agg')
+    import matplotlib.pyplot as plt
+    plt.figure()
 
 
 def run_task(*_):
 
-    env = TfEnv(normalize(GridWorldEnv()))
+    env = TfEnv(normalize(GridWorldEnv(
+        plot={
+            'visitation': {
+                'save': '~/garage/data/local/gridworld/instant-run',
+                'live': live_plot
+            }
+        }
+    )))
 
     policy = CategoricalMLPPolicy(
             env_spec=env.spec,
@@ -40,8 +47,6 @@ def run_task(*_):
             n_itr=50,
             discount=0.99,
             step_size=0.01,
-            # plot=plot,
-            # pause_for_plot=False
             )
 
     config = tf.ConfigProto()
@@ -52,6 +57,8 @@ def run_task(*_):
 
 # Run directly
 run_task()
+if live_plot:
+    input('< Press Enter to quit >')  # Prevent plots from closing
 
 # # Run pickled
 # for seed in range(1, 6):
