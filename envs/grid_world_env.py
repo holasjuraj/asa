@@ -112,10 +112,10 @@ class GridWorldEnv(AsaEnv, Serializable):
     @overrides
     def reset_to_state(self, start_obs, **kwargs):
         """
-        Choose state that matches given observation.
+        Initialize the agent in a state that matches given observation.
         """
-        # TODO
-        return self.reset()
+        self.agent_pos = np.asarray(np.round(start_obs), dtype='int64')
+        return self.get_current_obs()
 
 
     def step(self, action):
