@@ -28,16 +28,16 @@ class GridWorldEnv(AsaEnv, Serializable):
         'G' : goal
     """
     MAP = [
-            "S.......",
-            "........",
-            "...#....",
+            "SSS.....",
+            "SSS.....",
+            "SSS#....",
             ".....#..",
             "...#....",
-            ".#H...H.",
+            ".#H...#.",
             ".H..#.#.",
-            "...H...G"
+            ".G.#.GGG"
           ]
-    STEP_PENALTY = 0  # DEBUG changed from 0.05
+    STEP_PENALTY = 0.05
 
 
     # noinspection PyMissingConstructor
@@ -56,7 +56,6 @@ class GridWorldEnv(AsaEnv, Serializable):
 
         # Set state
         self.agent_pos = None
-        self.moving_goal = 'G' not in self.map
         self.n_row, self.n_col = self.map.shape
 
         # Plotting
@@ -87,41 +86,26 @@ class GridWorldEnv(AsaEnv, Serializable):
         """
         Position of agent ++ position of goal
         """
-        return Box(low=np.array([0, 0, 0, 0]),
-                   high=np.array([self.n_col, self.n_row, self.n_col, self.n_row]) - 1,
+        return Box(low=np.array([0, 0]),
+                   high=np.array([self.n_col, self.n_row]) - 1,
                    dtype=np.float32)
 
 
     @overrides
     def get_current_obs(self):
         """
-        Position of agent ++ position of goal
+        Position of agent
         """
-        r, c = self.agent_pos
-        (goal_r,), (goal_c,) = np.nonzero(self.map == 'G')
-        return np.array([r, c, goal_r, goal_c])
+        return np.array(self.agent_pos)
 
 
     def reset(self):
         """
-        Initialize the agent.
-        If self.moving_goal: randomly choose start point and goal.
+        Initialize the agent positioned randomly in one of starting points.
         """
-        if self.moving_goal:
-            self.map[self.map == 'S'] = 'F'
-            self.map[self.map == 'G'] = 'F'
-            while True:
-                r, c = np.random.randint(self.n_row), np.random.randint(self.n_col)
-                if self.map[r, c] == 'F':
-                    self.map[r, c] = 'S'
-                    break
-            while True:
-                r, c = np.random.randint(self.n_row), np.random.randint(self.n_col)
-                if self.map[r, c] == 'F':
-                    self.map[r, c] = 'G'
-                    break
-        (start_r,), (start_c,) = np.nonzero(self.map == 'S')
-        self.agent_pos = np.array([start_r, start_c])
+        starts = np.argwhere(self.map == 'S')
+        n_starts = starts.shape[0]
+        self.agent_pos = starts[np.random.randint(n_starts)]
         return self.get_current_obs()
 
 
@@ -139,6 +123,7 @@ class GridWorldEnv(AsaEnv, Serializable):
         Action map = {0: up, 1: right, 2: down, 3: left}
         :param action: scalar encoding the action
         """
+        prev_pos_xy = self._get_pos_as_xy()
         # Set new state
         moves = np.array([[-1, 0], [0, 1], [1, 0], [0, -1]])
         next_pos = np.clip(self.agent_pos + moves[action],
@@ -168,7 +153,9 @@ class GridWorldEnv(AsaEnv, Serializable):
         return Step(observation=obs,
                     reward=reward,
                     done=done,
-                    pos_xy=self._get_pos_as_xy())
+                    prev_pos_xy=prev_pos_xy,
+                    next_pos_xy=self._get_pos_as_xy()
+                   )
 
 
 
@@ -230,13 +217,15 @@ class GridWorldEnv(AsaEnv, Serializable):
         plt.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-',
                  c='k', lw=1, alpha=0.8)
         # Start, goal, walls and holes
-        start = self._get_pos_as_xy(np.argwhere(m == 'S').T)
-        goal  = self._get_pos_as_xy(np.argwhere(m == 'G').T)
-        holes = self._get_pos_as_xy(np.argwhere(m == 'H').T)
-        walls = self._get_pos_as_xy(np.argwhere(m == 'W').T)
-        plt.scatter(*start, c='royalblue', marker='o', s=100)
-        plt.scatter(*goal, c='royalblue', marker='*', s=100)
+        starts = self._get_pos_as_xy(np.argwhere(m == 'S').T)
+        goals  = self._get_pos_as_xy(np.argwhere(m == 'G').T)
+        holes  = self._get_pos_as_xy(np.argwhere(m == 'H').T)
+        walls  = self._get_pos_as_xy(np.argwhere(m == 'W').T)
+        plt.scatter(*goals, c='royalblue', marker='*', s=100)
         plt.scatter(*holes, c='r', marker='X', s=100)
+        plt.gca().add_collection(
+            PatchCollection([Rectangle(xy - 0.5, 1, 1) for xy in starts.T],
+                            color='navajowhite'))
         plt.gca().add_collection(
             PatchCollection([Rectangle(xy - 0.5, 1, 1) for xy in walls.T],
                             color='navy'))
@@ -244,16 +233,14 @@ class GridWorldEnv(AsaEnv, Serializable):
         # Plot paths
         alpha = opts.get('alpha', 0.1)
         noise = opts.get('noise', 0.1)
-        (start_r,), (start_c,) = np.nonzero(m == 'S')
         for path in paths:
             # Starting position
-            start_pos_rc = np.array([start_r, start_c])
-            start_pos_xy = self._get_pos_as_xy(start_pos_rc)
+            start_pos = path['env_infos']['prev_pos_xy'][:1].T
             # All others
-            pos = path['env_infos']['pos_xy'].T
-            pos = np.c_[start_pos_xy, pos]
-            pos = pos + np.random.normal(size=pos.shape, scale=noise)
-            plt.plot(pos[0], pos[1], ls='-', c='darkgreen', alpha=alpha)
+            all_pos = path['env_infos']['next_pos_xy'].T
+            all_pos = np.c_[start_pos, all_pos]
+            all_pos = all_pos + np.random.normal(size=all_pos.shape, scale=noise)
+            plt.plot(all_pos[0], all_pos[1], ls='-', c='darkgreen', alpha=alpha)
 
         # Save paths figure
         folder = opts.get('save', False)
