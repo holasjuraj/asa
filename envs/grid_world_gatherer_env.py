@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('qt5Agg')
 import matplotlib.pyplot as plt
-from matplotlib.collections import PatchCollection
+from matplotlib.collections import PatchCollection, LineCollection
 from matplotlib.patches import Rectangle
 
 from gym.spaces import Box, Discrete
@@ -113,6 +113,7 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
         """
         Position of agent ++ position of goal
         """
+        # TODO coins
         return Box(low=np.array([0, 0]),
                    high=np.array([self.n_col, self.n_row]) - 1,
                    dtype=np.float32)
@@ -123,6 +124,7 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
         """
         Position of agent
         """
+        # TODO coins
         return np.array(self.agent_pos)
 
 
@@ -266,15 +268,15 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
         plt.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-',
                  c='k', lw=1, alpha=0.8)
 
-        # Coins, holes, goals, starts and walls
+        # Coins, goals, holes, starts and walls
         coins  = self._get_pos_as_xy(np.argwhere(m == 'C').T)
-        holes  = self._get_pos_as_xy(np.argwhere(m == 'H').T)
         goals  = self._get_pos_as_xy(np.argwhere(m == 'G').T)
+        holes  = self._get_pos_as_xy(np.argwhere(m == 'H').T)
         starts = self._get_pos_as_xy(np.argwhere(m == 'S').T)
         walls  = self._get_pos_as_xy(np.argwhere(m == 'W').T)
-        plt.scatter(*coins, c='gold', marker='o', s=100, zorder=10)
-        plt.scatter(*holes, c='r', marker='X', s=100, zorder=10)
-        plt.scatter(*goals, c='royalblue', marker='*', s=100, zorder=10)
+        plt.scatter(*coins, c='gold',      marker='o', s=150, zorder=10, edgecolors='black')
+        plt.scatter(*goals, c='limegreen', marker='*', s=200, zorder=10, edgecolors='black')
+        plt.scatter(*holes, c='red',       marker='X', s=100, zorder=10)
         plt.gca().add_collection(
             PatchCollection([Rectangle(xy - 0.5, 1, 1) for xy in starts.T],
                             color='navajowhite'))
@@ -292,7 +294,13 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
             all_pos = path['env_infos']['next_pos_xy'].T
             all_pos = np.c_[start_pos, all_pos]
             all_pos = all_pos + np.random.normal(size=all_pos.shape, scale=noise)
-            plt.plot(all_pos[0], all_pos[1], ls='-', c='darkgreen', alpha=alpha)
+            # Colorful line collection
+            points = all_pos.T.reshape(-1, 1, 2)
+            segments = np.concatenate([points[:-1], points[1:]], axis=1)
+            lc = LineCollection(segments, cmap=plt.get_cmap('jet'), alpha=alpha)
+            lc.set_array(np.arange(all_pos.shape[-1]))
+            plt.gca().add_collection(lc)
+
 
         # Save paths figure
         folder = opts.get('save', False)
