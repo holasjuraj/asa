@@ -16,7 +16,7 @@ from sandbox.asa.envs import AsaEnv
 
 
 
-class GridWorldEnv(AsaEnv, Serializable):
+class GridWorldGathererEnv(AsaEnv, Serializable):
     """
     TODO add class description
 
@@ -25,17 +25,40 @@ class GridWorldEnv(AsaEnv, Serializable):
         'F' / '.' / ' ': free space
         'W' / 'x' / '#': wall
         'H' / 'O': hole (terminates episode)
+        'C' : coin
         'G' : goal
     """
+    # MAP = [
+    #         "SSS.....",
+    #         "SSS.....",
+    #         "SSS#....",
+    #         ".....#..",
+    #         "...#....",
+    #         ".#H...#.",
+    #         ".H..#.#.",
+    #         ".G.#.GGG"
+    #       ]
+
+    # MAP = [
+    #         "....#...",
+    #         "SS..#...",
+    #         "SS..#...",
+    #         "SS..#..C",
+    #         "SS......",
+    #         "SS..#.##",
+    #         "SS..#...",
+    #         "....#G.."
+    #       ]
+
     MAP = [
-            "SSS.....",
-            "SSS.....",
-            "SSS#....",
-            ".....#..",
-            "...#....",
-            ".#H...#.",
-            ".H..#.#.",
-            ".G.#.GGG"
+            "....#...",
+            "....##..",
+            ".####C#.",
+            ".#..#..#",
+            ".#.#S..C",
+            ".#..#G..",
+            ".####...",
+            "....#..."
           ]
     STEP_PENALTY = 0.05
 
@@ -53,10 +76,14 @@ class GridWorldEnv(AsaEnv, Serializable):
         m[np.logical_or(m == 'X', m == '#')] = 'W'
         m[m == 'O'] = 'H'
         self.map = m
+        self.n_row, self.n_col = self.map.shape
 
         # Set state
+        self.coins_pos = np.argwhere(self.map == 'C')
+        self.coins_num = self.coins_pos.shape[0]
+        self.coins_picked = np.array([False] * self.coins_num)
+        self.coin_holding = False
         self.agent_pos = None
-        self.n_row, self.n_col = self.map.shape
 
         # Plotting
         self.visitation_plot_num = 0
@@ -106,6 +133,8 @@ class GridWorldEnv(AsaEnv, Serializable):
         starts = np.argwhere(self.map == 'S')
         n_starts = starts.shape[0]
         self.agent_pos = starts[np.random.randint(n_starts)]
+        self.coins_picked = np.array([False] * self.coins_num)
+        self.coin_holding = False
         return self.get_current_obs()
 
 
@@ -115,6 +144,7 @@ class GridWorldEnv(AsaEnv, Serializable):
         Initialize the agent in a state that matches given observation.
         """
         self.agent_pos = np.asarray(np.round(start_obs), dtype='int64')
+        # TODO coins
         return self.get_current_obs()
 
 
@@ -136,15 +166,33 @@ class GridWorldEnv(AsaEnv, Serializable):
             next_state_type = 'F'  # agent stays on free tile
 
         # Determine reward and termination
-        if next_state_type == 'H':
+        reward = -self.STEP_PENALTY  # default reward
+        done = False                 # default done state
+
+        if next_state_type == 'H':  # hole
+            # fall into abyss
             done = True
             reward = -1
-        elif next_state_type in ['F', 'S']:
-            done = False
-            reward = -self.STEP_PENALTY
-        elif next_state_type == 'G':
-            done = True
-            reward = 1
+
+        elif next_state_type == 'C':  # coin
+            coin_idx = np.where(np.all(self.coins_pos == self.agent_pos, axis=1))[0]
+            if not self.coins_picked[coin_idx]  and  not self.coin_holding:
+                # pick a coin if 1) it's still there, and 2) I'm not holding another coin
+                self.coin_holding = True
+                self.coins_picked[coin_idx] = True
+
+        elif next_state_type == 'G':  # goal (coin drop-off area)
+            if self.coin_holding:
+                # drop the coin
+                self.coin_holding = False
+                reward = 1
+                if np.all(self.coins_picked):
+                    # finish if all coins have been collected and delivered
+                    done = True
+
+        elif next_state_type in ['F', 'S']:  # free space
+            pass  # default step penalty
+
         else:
             raise NotImplementedError
 
@@ -209,6 +257,7 @@ class GridWorldEnv(AsaEnv, Serializable):
         plt.ylim(-0.5, self.n_row - 0.5)
         plt.xticks([], [])
         plt.yticks([], [])
+
         # Grid
         x_grid = np.arange(self.n_row + 1) - 0.5
         y_grid = np.arange(self.n_col + 1) - 0.5
@@ -216,13 +265,16 @@ class GridWorldEnv(AsaEnv, Serializable):
                  c='k', lw=1, alpha=0.8)
         plt.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-',
                  c='k', lw=1, alpha=0.8)
-        # Start, goal, walls and holes
-        starts = self._get_pos_as_xy(np.argwhere(m == 'S').T)
-        goals  = self._get_pos_as_xy(np.argwhere(m == 'G').T)
+
+        # Coins, holes, goals, starts and walls
+        coins  = self._get_pos_as_xy(np.argwhere(m == 'C').T)
         holes  = self._get_pos_as_xy(np.argwhere(m == 'H').T)
+        goals  = self._get_pos_as_xy(np.argwhere(m == 'G').T)
+        starts = self._get_pos_as_xy(np.argwhere(m == 'S').T)
         walls  = self._get_pos_as_xy(np.argwhere(m == 'W').T)
-        plt.scatter(*goals, c='royalblue', marker='*', s=100)
-        plt.scatter(*holes, c='r', marker='X', s=100)
+        plt.scatter(*coins, c='gold', marker='o', s=100, zorder=10)
+        plt.scatter(*holes, c='r', marker='X', s=100, zorder=10)
+        plt.scatter(*goals, c='royalblue', marker='*', s=100, zorder=10)
         plt.gca().add_collection(
             PatchCollection([Rectangle(xy - 0.5, 1, 1) for xy in starts.T],
                             color='navajowhite'))
