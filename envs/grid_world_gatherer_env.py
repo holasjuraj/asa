@@ -18,7 +18,18 @@ from sandbox.asa.envs import AsaEnv
 
 class GridWorldGathererEnv(AsaEnv, Serializable):
     """
-    TODO add class description
+    Coin gatherer in gridworld environment.
+    Agent have to deliver all coins to goal positions. Agent can carry only one
+    coin at a time. A coin is picked/dropped automatically when agent comes to
+    coin tile/goal tile.
+    Agent's position is initialized randomly in one of starting tiles. The
+    rollout ends when all coins have been delivered.
+
+    Actions: move up/right/down/left
+    Observations: concatenation of:
+        - agent's position on map (row, column)
+        - whether or not agent holds a coin
+        - which coins have been picked from the map (n-bit vector)
 
     Maps legend:
         'S' : starting point
@@ -28,7 +39,7 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
         'C' : coin
         'G' : goal
     """
-    # MAP = [
+    # MAP = [  # No coins, holes ahead
     #         "SSS.....",
     #         "SSS.....",
     #         "SSS#....",
@@ -39,7 +50,7 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
     #         ".G.#.GGG"
     #       ]
 
-    # MAP = [
+    # MAP = [  # Single coin, medium
     #         "....#...",
     #         "SS..#...",
     #         "SS..#...",
@@ -50,16 +61,37 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
     #         "....#G.."
     #       ]
 
-    MAP = [
+    # MAP = [  # Multiple coins, small
+    #         "#C#.",
+    #         "#..#",
+    #         "S..C",
+    #         "#G..",
+    #         "#...",
+    #         "#..."
+    #       ]
+
+    MAP = [  # Multiple coins, medium easier
             "....#...",
-            "....##..",
-            ".####C#.",
-            ".#..#..#",
-            ".#.#S..C",
-            ".#..#G..",
-            ".####...",
-            "....#..."
+            "....#...",
+            "SS..#C..",
+            "SS.. ..C",
+            "SS......",
+            "SS..#...",
+            "....#...",
+            "....#..G"
           ]
+
+    # MAP = [  # Multiple coins, medium harder
+    #         "....#C.C",
+    #         "SS..#...",
+    #         "SS..#...",
+    #         "SS..#..C",
+    #         "SS......",
+    #         "SS..#.##",
+    #         "SS..#...",
+    #         "....#..G"
+    #       ]
+
     STEP_PENALTY = 0.05
 
 
@@ -111,12 +143,18 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
     @property
     def observation_space(self):
         """
-        Position of agent ++ position of goal
+        [Position of agent] + [coin holding] + [coins picked]
+        - position of agent: [row, col]
+        - coin holding: flag whether agent is holding a coin (1) or not (0)
+        - coins picked: vector, for each coin 0 if it has been picked, 0 if not
         """
-        # TODO coins
-        return Box(low=np.array([0, 0]),
-                   high=np.array([self.n_col, self.n_row]) - 1,
-                   dtype=np.float32)
+        high = np.concatenate((
+            [self.n_col, self.n_row],
+            [1],
+            [1] * self.coins_num
+        ))
+        low = np.zeros_like(high)
+        return Box(low, high, dtype=np.float32)
 
 
     @overrides
@@ -124,8 +162,11 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
         """
         Position of agent
         """
-        # TODO coins
-        return np.array(self.agent_pos)
+        return np.concatenate((
+            self.agent_pos,
+            [self.coin_holding],
+            self.coins_picked
+        ))
 
 
     def reset(self):
@@ -145,8 +186,10 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
         """
         Initialize the agent in a state that matches given observation.
         """
-        self.agent_pos = np.asarray(np.round(start_obs), dtype='int64')
-        # TODO coins
+        obs = np.asarray(np.round(start_obs), dtype='int32')
+        self.agent_pos = obs[:2]
+        self.coin_holding = obs[2] > 0.5
+        self.coins_picked = obs[3:] > 0.5
         return self.get_current_obs()
 
 
@@ -188,9 +231,9 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
                 # drop the coin
                 self.coin_holding = False
                 reward = 1
-                if np.all(self.coins_picked):
-                    # finish if all coins have been collected and delivered
-                    done = True
+            if np.all(self.coins_picked):
+                # finish if all coins have been collected and delivered
+                done = True
 
         elif next_state_type in ['F', 'S']:  # free space
             pass  # default step penalty
@@ -261,8 +304,8 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
         plt.yticks([], [])
 
         # Grid
-        x_grid = np.arange(self.n_row + 1) - 0.5
-        y_grid = np.arange(self.n_col + 1) - 0.5
+        x_grid = np.arange(self.n_col + 1) - 0.5
+        y_grid = np.arange(self.n_row + 1) - 0.5
         plt.plot(x_grid, np.stack([y_grid] * x_grid.size), ls='-',
                  c='k', lw=1, alpha=0.8)
         plt.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-',
