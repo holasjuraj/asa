@@ -160,7 +160,10 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
     @overrides
     def get_current_obs(self):
         """
-        Position of agent
+        [Position of agent] + [coin holding] + [coins picked]
+        - position of agent: [row, col]
+        - coin holding: flag whether agent is holding a coin (1) or not (0)
+        - coins picked: vector, for each coin 0 if it has been picked, 0 if not
         """
         return np.concatenate((
             self.agent_pos,
