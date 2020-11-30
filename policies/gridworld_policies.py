@@ -1,7 +1,9 @@
 import numpy as np
+
 from garage.core import Serializable
 from garage.policies import Policy
-from sandbox.asa.envs import GridWorldGathererEnv
+
+from sandbox.asa.envs import GridworldGathererEnv
 
 
 class GridworldTargetPolicy(Policy, Serializable):
@@ -25,20 +27,21 @@ class GridworldTargetPolicy(Policy, Serializable):
                  ( 0, -1): 3,
                  ( 0,  0): 0  # when agent is already on target tile, go up
                 }
-        pos = observation[:2]
+        pos = np.asarray(observation[:2], dtype='int32')
 
         # Get primary & secondary moves
         delta = self.target - pos
         abs_d = np.abs(delta)
-        move_r, move_c = np.diag( delta // abs_d )
-        move_1, move_2 = (move_r, move_c) if abs_d[0] >= abs_d [1] else (move_c, move_r)
+        move_r, move_c = np.diag( delta // np.maximum(abs_d, [1, 1]) )
+        move_1, move_2 = (move_r, move_c) if abs_d[0] >= abs_d[1] else (move_c, move_r)
 
         # If primary move goes out of map / into wall, use secondary move
         next_pos = pos + move_1
-        m = np.asarray(GridWorldGathererEnv.MAP)
+        m = GridworldGathererEnv.MAP
         if np.min(next_pos) < 0  \
-           or  np.any(next_pos >= m.shape)  \
-           or  m[next_pos[0], next_pos[1]] == 'W':
+           or  next_pos[0] >= len(m)  \
+           or  next_pos[1] >= len(m[0])  \
+           or  m[next_pos[0]][next_pos[1]] in '#WXx':
             move_1 = move_2
 
         return moves[tuple(move_1)], dict()

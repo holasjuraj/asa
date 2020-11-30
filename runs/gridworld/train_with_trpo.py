@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.baselines import GaussianMLPBaseline  # Baseline for Advantage function { A(s) = V(s) - B(s) }
-from sandbox.asa.envs import GridWorldGathererEnv    # Environment
+from sandbox.asa.envs import GridworldGathererEnv    # Environment
 from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy  # Policy network
@@ -14,7 +14,7 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 
 def run_task(*_):
 
-    env = TfEnv(normalize(GridWorldGathererEnv(
+    env = TfEnv(normalize(GridworldGathererEnv(
         plot={
             'visitation': {
                 # 'save': '~/garage/data/local/gridworld/instant-run',

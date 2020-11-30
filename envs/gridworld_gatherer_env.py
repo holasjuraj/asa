@@ -16,7 +16,7 @@ from sandbox.asa.envs import AsaEnv
 
 
 
-class GridWorldGathererEnv(AsaEnv, Serializable):
+class GridworldGathererEnv(AsaEnv, Serializable):
     """
     Coin gatherer in gridworld environment.
     Agent have to deliver all coins to goal positions. Agent can carry only one
@@ -70,16 +70,16 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
     #         "#..."
     #       ]
 
-    MAP = [  # Multiple coins, medium easier
-            "....#...",
-            "....#...",
-            "SS..#C..",
-            "SS.. ..C",
-            "SS......",
-            "SS..#...",
-            "....#...",
-            "....#..G"
-          ]
+    # MAP = [  # Multiple coins, medium easier
+    #         "....#...",
+    #         "....#...",
+    #         "SS..#C..",
+    #         "SS.. ..C",
+    #         "SS......",
+    #         "SS..#...",
+    #         "....#...",
+    #         "....#..G"
+    #       ]
 
     # MAP = [  # Multiple coins, medium harder
     #         "....#C.C",
@@ -91,6 +91,20 @@ class GridWorldGathererEnv(AsaEnv, Serializable):
     #         "SS..#...",
     #         "....#..G"
     #       ]
+
+    MAP = [  # Test arena
+            "#####################",
+            "#...................#",
+            "#...................#",
+            "#....C..............#",
+            "#.....##............#",
+            "#...................#",
+            "#...................#",
+            "#.............#.....#",
+            "#.............#..S..#",
+            "#...................#",
+            "#####################"
+           ]
 
     STEP_PENALTY = 0.05
 
