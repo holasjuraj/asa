@@ -2,6 +2,7 @@ import numpy as np
 
 from garage.core import Serializable
 from garage.policies import Policy
+from garage.misc import special
 
 from sandbox.asa.envs import GridworldGathererEnv
 
@@ -48,3 +49,10 @@ class GridworldTargetPolicy(Policy, Serializable):
 
     def get_params_internal(self, **tags):
         return [self.target]
+
+    def skill_stopping_func(self, path):
+        moves = np.array([[-1, 0], [0, 1], [1, 0], [0, -1]])
+        last_pos = path['observations'][-1][:2]
+        a = special.from_onehot(path["actions"][-1])
+        last_move = moves[a]
+        return np.array_equal(last_pos + last_move, self.target)

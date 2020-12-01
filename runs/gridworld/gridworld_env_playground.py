@@ -27,7 +27,7 @@ logger.set_snapshot_dir('/home/h/holas3/garage/data/local/gridworld-env-playgrou
 path = skill_rollout(
         env=env,
         agent=policy,
-        skill_stopping_func=(lambda *_: False),
+        skill_stopping_func=policy.skill_stopping_func,
         max_path_length=20,
         reset_start_rollout=True
 )
