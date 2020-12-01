@@ -36,10 +36,7 @@ def skill_rollout(env,
     if reset_start_rollout:
         o = env.reset()
     else:
-        # Unwrap from normalized and TF envs
-        # TODO! starting observation o will be non-normalized!
-        #       Re: use AsaEnv get_current_obs_wrapped
-        o = AsaEnv.unwrap_to_asa_env(env).get_current_obs()
+        o = AsaEnv.get_current_obs_wrapped(env)
     agent.reset()
     path_length = 0
     if animated:
