@@ -55,7 +55,11 @@ class HierarchizedEnv(Wrapper, Serializable):
         next_obs = AsaEnv.get_current_obs_wrapped(self.env)
         reward = np.sum(skill_path['rewards'])
         term = skill_path['terminated'][-1]
-        return Step(next_obs, reward, term)
+
+        return Step(next_obs, reward, term,
+                    # TODO! Sub_env_infos class
+                    # sub_env_infos=Sub_env_infos(skill_path['env_infos'])
+                   )
 
 
     @overrides

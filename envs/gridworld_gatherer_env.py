@@ -92,18 +92,67 @@ class GridworldGathererEnv(AsaEnv, Serializable):
     #         "....#..G"
     #       ]
 
+    # MAP = [  # Test arena
+    #         "#####################",
+    #         "#...................#",
+    #         "#...................#",
+    #         "#....C..............#",
+    #         "#.....##............#",
+    #         "#...................#",
+    #         "#...................#",
+    #         "#.............#.....#",
+    #         "#.............#..S..#",
+    #         "#...................#",
+    #         "#####################"
+    #        ]
+
     MAP = [  # Test arena
-            "#####################",
-            "#...................#",
-            "#...................#",
-            "#....C..............#",
-            "#.....##............#",
-            "#...................#",
-            "#...................#",
-            "#.............#.....#",
-            "#.............#..S..#",
-            "#...................#",
-            "#####################"
+            "####################################################################",
+            "#..........#.............#...............#.........................#",
+            "#..........#.............#...............#.........................#",
+            "#..........#.............#...............#.........................#",
+            "#..........#.............#...............#.........................#",
+            "#..........#.............#...............#....SSSSSSSSSSSSSSSSS....#",
+            "#....F.....#......F......#.......F.......#....SSSSSSSSSSSSSSSSS....#",
+            "#..........#.............#...............#....SSSSSSSSSSSSSSSSS....#",
+            "#..........#.............#...............#....SSSSSSSSSSSSSSSSS....#",
+            "#..........#.............#...............#....SSSSSSSSSSSSSSSSS....#",
+            "#..........#.............#...............#....SSSSSSSSSSSSSSSSS....#",
+            "#..........#.............#...............#....SSSSSSSSSSSSSSSSS....#",
+            "#..........#.............#...............#....SSSSSSSSSSSSSSSSS....#",
+            "#####..###########..############..########....SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#.............................................SSSSSSSSSSSSSSSSS....#",
+            "#####..##########..##############..#######....SSSSSSSSSSSSSSSSS....#",
+            "#.........................#..............#....SSSSSSSSSSSSSSSSS....#",
+            "#.........................#..............#....SSSSSSSSSSSSSSSSS....#",
+            "#.........................#..............#....SSSSSSSSSSSSSSSSS....#",
+            "#.........................#..............#....SSSSSSSSSSSSSSSSS....#",
+            "#.........................#..............#....SSSSSSSSSSSSSSSSS....#",
+            "#.........................#..............#....SSSSSSSSSSSSSSSSS....#",
+            "#....F............F.......#......F.......#....SSSSSSSSSSSSSSSSS....#",
+            "#.........................#..............#....SSSSSSSSSSSSSSSSS....#",
+            "#.........................#..............#....SSSSSSSSSSSSSSSSS....#",
+            "#.........................#..............#....SSSSSSSSSSSSSSSSS....#",
+            "#.........................#..............#.........................#",
+            "#.........................#..............#......................GGG#",
+            "#.........................#..............#......................GGG#",
+            "#.........................#..............#......................GGG#",
+            "####################################################################"
            ]
 
     STEP_PENALTY = 0.05
@@ -319,27 +368,30 @@ class GridworldGathererEnv(AsaEnv, Serializable):
         plt.ylim(-0.5, self.n_row - 0.5)
         plt.xticks([], [])
         plt.yticks([], [])
+        plt.gca().set_aspect('equal')
 
-        # Grid
-        x_grid = np.arange(self.n_col + 1) - 0.5
-        y_grid = np.arange(self.n_row + 1) - 0.5
-        plt.plot(x_grid, np.stack([y_grid] * x_grid.size), ls='-',
-                 c='k', lw=1, alpha=0.8)
-        plt.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-',
-                 c='k', lw=1, alpha=0.8)
+        # # Grid
+        # x_grid = np.arange(self.n_col + 1) - 0.5
+        # y_grid = np.arange(self.n_row + 1) - 0.5
+        # plt.plot(x_grid, np.stack([y_grid] * x_grid.size), ls='-',
+        #          c='k', lw=1, alpha=0.8)
+        # plt.plot(np.stack([x_grid] * y_grid.size), y_grid, ls='-',
+        #          c='k', lw=1, alpha=0.8)
 
-        # Coins, goals, holes, starts and walls
+        # Coins, holes, starts, goals and walls
         coins  = self._get_pos_as_xy(np.argwhere(m == 'C').T)
-        goals  = self._get_pos_as_xy(np.argwhere(m == 'G').T)
         holes  = self._get_pos_as_xy(np.argwhere(m == 'H').T)
         starts = self._get_pos_as_xy(np.argwhere(m == 'S').T)
+        goals  = self._get_pos_as_xy(np.argwhere(m == 'G').T)
         walls  = self._get_pos_as_xy(np.argwhere(m == 'W').T)
-        plt.scatter(*coins, c='gold',      marker='o', s=150, zorder=10, edgecolors='black')
-        plt.scatter(*goals, c='limegreen', marker='*', s=200, zorder=10, edgecolors='black')
-        plt.scatter(*holes, c='red',       marker='X', s=100, zorder=10)
+        plt.scatter(*coins, c='gold', marker='o', s=150, zorder=10, edgecolors='black')
+        plt.scatter(*holes, c='red',  marker='X', s=100, zorder=10)
         plt.gca().add_collection(
             PatchCollection([Rectangle(xy - 0.5, 1, 1) for xy in starts.T],
                             color='navajowhite'))
+        plt.gca().add_collection(
+            PatchCollection([Rectangle(xy - 0.5, 1, 1) for xy in goals.T],
+                            color='lightgreen'))
         plt.gca().add_collection(
             PatchCollection([Rectangle(xy - 0.5, 1, 1) for xy in walls.T],
                             color='navy'))

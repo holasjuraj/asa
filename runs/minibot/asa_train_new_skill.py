@@ -127,7 +127,7 @@ def run_task(*_):
         low_algo_kwargs['baseline'] = baseline
         low_algo_cls = saved_data['low_algo_cls']
 
-        # DEBUG set custom training params (should`ve been set in asa_test)
+        # DEBUG set custom training params (should`ve been set in asa_basic_run)
         low_algo_kwargs['batch_size'] = 2500
         low_algo_kwargs['max_path_length'] = 50
         low_algo_kwargs['n_itr'] = 500

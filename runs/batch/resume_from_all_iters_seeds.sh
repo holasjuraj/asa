@@ -8,7 +8,7 @@ exp_name="Basic_run_20itrs_mapsAll_b15000"
 gap=2
 
 seed=1
-#for dir in ../../data/local/asa-test/*$exp_name*; do
+#for dir in ../../data/local/asa-basic-run/*$exp_name*; do
 for dir in ../../data/archive/From_all_with_MinibotRight_mapsAll_b15000/*$exp_name*; do
     runs/resume_from_all_iters.sh -s $seed -g $gap -d $dir
     seed=$((seed+1))

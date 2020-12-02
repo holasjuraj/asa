@@ -1,14 +1,14 @@
 #!/bin/bash
-# Launch asa_test.py for all seeds.
+# Launch asa_basic_run.py for all seeds.
 
 max_parallel=8
 max_seed=8
 
 # Make tmp dir
-tmp_dir=$(date '+asa_test_output-%Y_%m_%d-%H_%M')
+tmp_dir=$(date '+asa_basic_run_output-%Y_%m_%d-%H_%M')
 mkdir $tmp_dir
-script="${tmp_dir}/asa_test.py"
-cp /home/h/holas3/garage/sandbox/asa/runs/asa_test.py $script
+script="${tmp_dir}/asa_basic_run.py"
+cp /home/h/holas3/garage/sandbox/asa/runs/minibot/asa_basic_run.py $script
 
 # Launch all trainings
 num_pids=0

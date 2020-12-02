@@ -132,7 +132,7 @@ def run_task(*_):
         # 4) Create new policy and randomly initialize its weights
         new_top_policy = CategoricalMLPPolicy(
                 env_spec=tf_hrl_env.spec,  # This env counts with new skill (action space = n + 1)
-                hidden_sizes=(32, 32),     # As was in asa_test.py,
+                hidden_sizes=(32, 32),     # As was in asa_basic_run.py,
                 name="CategoricalMLPPolicy2"
         )
         ntp_init_op = tf.variables_initializer(new_top_policy.get_params())

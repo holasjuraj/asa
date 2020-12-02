@@ -8,14 +8,14 @@ from datetime import datetime
 from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
 from sandbox.asa.policies import HierarchicalPolicy
-from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy
+from sandbox.asa.policies import GridworldTargetPolicy, GridworldStepPolicy
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.baselines import GaussianMLPBaseline  # Baseline for Advantage function { A(s, a) = Q(s, a) - B(s) }
-from sandbox.asa.envs import MinibotEnv              # Environment
+from sandbox.asa.envs import GridworldGathererEnv    # Environment
 from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
-from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
+from garage.tf.policies import CategoricalMLPPolicy  # Policy networks
 from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
@@ -46,24 +46,31 @@ def run_task(*_):
     ## Lower level environment & policies
     # Base (original) environment.
     base_env = normalize(
-                MinibotEnv(
-                    use_maps='all',  # [0,1]
-                    discretized=True,
-                    states_cache=dict()
-                )
+            GridworldGathererEnv(
+                plot={
+                    'visitation': {
+                        # 'save': '~/garage/data/local/gridworld/instant-run',
+                        'save': False,
+                        'live': True
+                    }
+                }
+            )
     )
     tf_base_env = TfEnv(base_env)
 
     # Skill policies, operating in base environment
-    trained_skill_policies = [
-            MinibotForwardPolicy(env_spec=base_env.spec),
-            MinibotLeftPolicy(env_spec=base_env.spec)
+    skill_targets = [
+        ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
+        (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
+        (37,  5), (37, 18), (37, 33), (37, 47), (37, 61)
     ]
-    trained_skill_policies_stop_funcs = [
-            lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
-            lambda path: len(path['actions']) >= 3   # 3 steps to rotate 90°
-    ]
-    skill_policy_prototype = GaussianMLPPolicy(
+    trained_skill_policies = \
+            [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
+            [GridworldStepPolicy(env_spec=base_env.spec, direction=d) for d in range(4)]
+    trained_skill_policies = [GridworldStepPolicy(env_spec=base_env.spec, direction=0)]
+    trained_skill_policies_stop_funcs = \
+            [pol.skill_stopping_func for pol in trained_skill_policies]
+    skill_policy_prototype = CategoricalMLPPolicy(
             env_spec=tf_base_env.spec,
             hidden_sizes=(64, 64)
     )
@@ -78,6 +85,7 @@ def run_task(*_):
 
     # Top policy
     top_policy = CategoricalMLPPolicy(
+            name="TopCategoricalMLPPolicy",
             env_spec=tf_hrl_env.spec,
             hidden_sizes=(32, 32)
     )
@@ -128,13 +136,15 @@ def run_task(*_):
 
 
 ## Run directly
-# run_task()
+run_task()
+input('< Press Enter to quit >')  # Prevent plots from closing
+exit()
 
 
 ## Run pickled
 # # Erase snapshots from previous instant run
 # import shutil
-# shutil.rmtree('/home/h/holas3/garage/data/local/asa_test/instant_run', ignore_errors=False)
+# shutil.rmtree('/home/h/holas3/garage/data/local/asa_basic_run/instant_run', ignore_errors=False)
 
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
@@ -153,7 +163,7 @@ run_experiment(
         use_tf=True,
         use_gpu=True,
         # Name experiment
-        exp_prefix='asa-test',
+        exp_prefix='asa-basic-run',
         exp_name=exp_name_direct or \
                  (datetime.now().strftime('%Y_%m_%d-%H_%M')
                   + (('--' + exp_name_extra) if exp_name_extra else '')
