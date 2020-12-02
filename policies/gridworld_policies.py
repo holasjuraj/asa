@@ -56,3 +56,29 @@ class GridworldTargetPolicy(Policy, Serializable):
         a = special.from_onehot(path["actions"][-1])
         last_move = moves[a]
         return np.array_equal(last_pos + last_move, self.target)
+
+
+
+class GridworldStepPolicy(Policy, Serializable):
+    """
+    Policy with fixed behaviour of moving one tile in desired direction.
+    """
+    def __init__(self, env_spec, direction):
+        """
+        :param direction: 0-4 or 'up' / 'right' / 'down' / 'left'
+        """
+        if isinstance(direction, int):
+            self.direction = direction
+        else:
+            self.direction = {'up': 0, 'right': 1, 'down': 2, 'left': 3}[direction]
+        Serializable.quick_init(self, locals())
+        super().__init__(env_spec=env_spec)
+
+    def get_action(self, observation):
+        return self.direction, dict()
+
+    def get_params_internal(self, **tags):
+        return []
+
+    def skill_stopping_func(self, path):
+        return True

@@ -21,7 +21,6 @@ class HierarchizedEnv(Wrapper, Serializable):
         N being the number of skills.
         :param env: AsaEnv environment to wrap
         :param num_orig_skills: number of pre-trained skill that will prepared be in HRL policy
-        :param hrl_policy: A HierarchicalPolicy containing all current skill policies
         """
         Serializable.quick_init(self, locals())
         super().__init__(env)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from sandbox.asa.envs import GridworldGathererEnv
-from sandbox.asa.policies import GridworldTargetPolicy
+from sandbox.asa.policies import GridworldTargetPolicy, GridworldStepPolicy
 from sandbox.asa.sampler import skill_rollout
 
 from garage.tf.envs import TfEnv
@@ -18,9 +18,10 @@ env = TfEnv(GridworldGathererEnv(
             }
         }
 ))
-policy = GridworldTargetPolicy(
+policy = GridworldStepPolicy(
         env_spec=env.spec,
-        target=(3, 5)
+        # target=(3, 5)
+        direction='up'
 )
 
 logger.set_snapshot_dir('/home/h/holas3/garage/data/local/gridworld-env-playground')
