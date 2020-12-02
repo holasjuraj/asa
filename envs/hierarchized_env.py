@@ -1,11 +1,13 @@
 import numpy as np
 
+from gym import Wrapper
+from gym.spaces import Discrete
 from garage.core.serializable import Serializable
 from garage.misc.overrides import overrides
-from gym import Wrapper
 from garage.envs.base import Step
 from garage.tf.envs import TfEnv
-from gym.spaces import Discrete
+from garage.tf.misc.tensor_utils import concat_tensor_dict_list
+
 from sandbox.asa.sampler import skill_rollout
 from sandbox.asa.envs import AsaEnv
 
@@ -14,13 +16,15 @@ class HierarchizedEnv(Wrapper, Serializable):
     def __init__(
             self,
             env,
-            num_orig_skills
+            num_orig_skills,
+            subpath_infos=None
     ):
         """
         Creates a top-level environment for a HRL agent. Original env`s actions are replaced by N discrete actions,
         N being the number of skills.
         :param env: AsaEnv environment to wrap
         :param num_orig_skills: number of pre-trained skill that will prepared be in HRL policy
+        :param subpath_infos: 'all' or list of subpath information to keep, defaults to ['env_infos']
         """
         Serializable.quick_init(self, locals())
         super().__init__(env)
@@ -28,6 +32,9 @@ class HierarchizedEnv(Wrapper, Serializable):
         self.action_space = Discrete(self._num_orig_skills)
         # TODO! action_space must change after adding new skill
         self.hrl_policy = None
+        if subpath_infos is None:
+            subpath_infos = ['env_infos']
+        self.subpath_infos = subpath_infos
 
 
     def set_hrl_policy(self, hrl_policy):
@@ -56,12 +63,46 @@ class HierarchizedEnv(Wrapper, Serializable):
         reward = np.sum(skill_path['rewards'])
         term = skill_path['terminated'][-1]
 
-        return Step(next_obs, reward, term,
-                    # TODO! Sub_env_infos class
-                    # sub_env_infos=Sub_env_infos(skill_path['env_infos'])
-                   )
+        return Step(
+            observation=next_obs,
+            reward=reward,
+            done=term,
+            subpath_infos=SubpolicyPathInfo(skill_path, store=self.subpath_infos)
+        )
 
 
     @overrides
     def reset(self, **kwargs):
         return self.env.reset(**kwargs)
+
+
+
+class SubpolicyPathInfo:
+    """
+    Container class to hold path info from subpolicy rollouts.
+    """
+    def __init__(self, path, store='all'):
+        """
+        :param path: path dict containing all the information
+        :param store: list of information to store
+        :type store: str or list
+        """
+        self.as_dict = dict()
+        if store == 'all':
+            store = ['observations', 'actions', 'rewards', 'env_infos',
+                     'advantages', 'deltas', 'baselines', 'returns']
+        for thing in store:
+            self.as_dict[thing] = path.get(thing, np.array([]))
+
+    def __getitem__(self, item):
+        return self.as_dict[item]
+
+    def __repr__(self):
+        return repr(self.as_dict)
+
+    @staticmethod
+    def concat_subpath_infos(infos_list):
+        """
+        Concat information from list<SubpolicyPathInfo> into dict
+        """
+        return concat_tensor_dict_list([info_obj.as_dict for info_obj in infos_list])

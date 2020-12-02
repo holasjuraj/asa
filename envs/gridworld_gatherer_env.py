@@ -13,6 +13,7 @@ from garage.misc.overrides import overrides
 from garage.misc import logger
 
 from sandbox.asa.envs import AsaEnv
+from sandbox.asa.envs import SubpolicyPathInfo
 
 
 
@@ -400,10 +401,16 @@ class GridworldGathererEnv(AsaEnv, Serializable):
         alpha = opts.get('alpha', 0.1)
         noise = opts.get('noise', 0.1)
         for path in paths:
+            data = path['env_infos']
+            # Concat subpaths from HRL rollout
+            if 'prev_pos_xy' not in data:
+                data = SubpolicyPathInfo.concat_subpath_infos(
+                    path['env_infos']['subpath_infos']
+                )['env_infos']
             # Starting position
-            start_pos = path['env_infos']['prev_pos_xy'][:1].T
+            start_pos = data['prev_pos_xy'][:1].T
             # All others
-            all_pos = path['env_infos']['next_pos_xy'].T
+            all_pos = data['next_pos_xy'].T
             all_pos = np.c_[start_pos, all_pos]
             all_pos = all_pos + np.random.normal(size=all_pos.shape, scale=noise)
             # Colorful line collection
