@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import matplotlib
-matplotlib.use('qt5Agg')
+# matplotlib.use('qt5Agg')  # DEBUG
 import matplotlib.pyplot as plt
 from matplotlib.collections import PatchCollection, LineCollection
 from matplotlib.patches import Rectangle
@@ -156,7 +156,7 @@ class GridworldGathererEnv(AsaEnv, Serializable):
             "####################################################################"
            ]
 
-    STEP_PENALTY = 0.05
+    STEP_PENALTY = 0.005
 
 
     # noinspection PyMissingConstructor
@@ -358,9 +358,9 @@ class GridworldGathererEnv(AsaEnv, Serializable):
             opts = dict()
         if opts.get('live', False):
             plt.figure('Paths')
-            plt.clf()
         else:
             plt.ioff()
+        plt.clf()
 
         # Common plot opts
         m = self.map

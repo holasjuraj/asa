@@ -8,7 +8,7 @@ max_seed=8
 tmp_dir=$(date '+asa_basic_run_output-%Y_%m_%d-%H_%M')
 mkdir $tmp_dir
 script="${tmp_dir}/asa_basic_run.py"
-cp /home/h/holas3/garage/sandbox/asa/runs/minibot/asa_basic_run.py $script
+cp /home/h/holas3/garage/sandbox/asa/runs/gridworld/asa_basic_run.py $script
 
 # Launch all trainings
 num_pids=0

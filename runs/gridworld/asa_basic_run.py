@@ -50,8 +50,8 @@ def run_task(*_):
                 plot={
                     'visitation': {
                         # 'save': '~/garage/data/local/gridworld/instant-run',
-                        'save': False,
-                        'live': True
+                        'save': True,
+                        'live': False
                     }
                 }
             )
@@ -114,9 +114,9 @@ def run_task(*_):
             low_algo_cls=TRPO,
             # Top algo kwargs
                 batch_size=5000,
-                max_path_length=100,
+                max_path_length=50,
                 n_itr=80,
-                discount=0.9,
+                discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
                 'batch_size': 2500,
@@ -136,9 +136,9 @@ def run_task(*_):
 
 
 ## Run directly
-run_task()
-input('< Press Enter to quit >')  # Prevent plots from closing
-exit()
+# run_task()
+# input('< Press Enter to quit >')  # Prevent plots from closing
+# exit()
 
 
 ## Run pickled

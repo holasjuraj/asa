@@ -48,7 +48,7 @@ class GridworldTargetPolicy(Policy, Serializable):
         return moves[tuple(move_1)], dict()
 
     def get_params_internal(self, **tags):
-        return [self.target]
+        return []
 
     def skill_stopping_func(self, path):
         moves = np.array([[-1, 0], [0, 1], [1, 0], [0, -1]])
