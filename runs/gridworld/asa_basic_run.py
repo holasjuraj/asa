@@ -60,14 +60,22 @@ def run_task(*_):
 
     # Skill policies, operating in base environment
     skill_targets = [
-        ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
-        (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
-        (37,  5), (37, 18), (37, 33), (37, 47), (37, 61)
+        # # DEBUG: 16reg
+        # ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
+        # (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
+        # (37,  5), (37, 18), (37, 33), (37, 47), (37, 61),
+        # (43, 65)
+
+        # DEBUG: 11reg
+        ( 6,  5), ( 6, 18), ( 6, 33),
+        (21,  5), (21, 18), (21, 33), (21, 47),
+        (37,  5), (37, 18), (37, 33),
+        (43, 65)
     ]
     trained_skill_policies = \
             [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
-            [GridworldStepPolicy(env_spec=base_env.spec, direction=d) for d in range(4)]
-    trained_skill_policies = [GridworldStepPolicy(env_spec=base_env.spec, direction=0)]
+            []  # DEBUG
+            # [GridworldStepPolicy(env_spec=base_env.spec, direction=d) for d in range(4)]
     trained_skill_policies_stop_funcs = \
             [pol.skill_stopping_func for pol in trained_skill_policies]
     skill_policy_prototype = CategoricalMLPPolicy(
@@ -149,7 +157,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'Basic_run_80itrs_6maps_pnl005_disc09'  # Name of run
+exp_name_extra = 'Beta_11reg_4coin_noStopFun'  # Name of run
 
 # Seed
 seed = seed if args.seed == 'keep' \

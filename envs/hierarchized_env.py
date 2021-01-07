@@ -35,6 +35,7 @@ class HierarchizedEnv(Wrapper, Serializable):
         if subpath_infos is None:
             subpath_infos = ['env_infos']
         self.subpath_infos = subpath_infos
+        # self.last_action = -1  # DEBUG: Gridworld force different regions
 
 
     def set_hrl_policy(self, hrl_policy):
@@ -63,6 +64,11 @@ class HierarchizedEnv(Wrapper, Serializable):
         reward = np.sum(skill_path['rewards'])
         term = skill_path['terminated'][-1]
 
+        # # DEBUG: for Gridworld - force to choose different action (region) then last time - agent tends to move more
+        # if action == self.last_action:
+        #     reward -= 1
+        # self.last_action = action
+
         return Step(
             observation=next_obs,
             reward=reward,
@@ -73,6 +79,7 @@ class HierarchizedEnv(Wrapper, Serializable):
 
     @overrides
     def reset(self, **kwargs):
+        # self.last_action = -1  # DEBUG: Gridworld force different regions
         return self.env.reset(**kwargs)
 
 
