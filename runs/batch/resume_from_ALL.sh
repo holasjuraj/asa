@@ -111,7 +111,7 @@ for integ_method in $(seq 0 5); do
         rm -f $(for exp_dir in $experiments_dir/*; do ls -tr1 $exp_dir/itr* 2>/dev/null | head -n -1; done)
       fi
 
-      # Get currect skill policy file
+      # Get current skill policy file
       if $ignore_skill_files; then
         skill_policy_dir=$skill_name
         skill_policy_file="nofile"
@@ -132,7 +132,7 @@ for integ_method in $(seq 0 5); do
       exp_dir=$(ls -d $experiments_dir/*resumed_$itr_id--*$exp_name*--skill*$skill_name*--integ$integ_method*--s$seed 2>/dev/null | tail -1)
       exp_done_file="$exp_dir/final.pkl"
       if [ $exp_dir ] && [ -f "$exp_done_file" ]; then
-        # This experiment was successfuly executed
+        # This experiment was successfully executed
         continue
       fi
       if [ $exp_dir ]; then
@@ -156,6 +156,8 @@ for integ_method in $(seq 0 5); do
 done
 
 # Wait for last batch
+sleep 1
+echo "Waiting for processes..."
 for p in ${back_pids[*]}; do
   wait $p
 done

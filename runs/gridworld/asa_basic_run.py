@@ -20,7 +20,7 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 # Parse arguments
@@ -60,17 +60,17 @@ def run_task(*_):
 
     # Skill policies, operating in base environment
     skill_targets = [
-        # # DEBUG: 16reg
-        # ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
-        # (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
-        # (37,  5), (37, 18), (37, 33), (37, 47), (37, 61),
-        # (43, 65)
-
-        # DEBUG: 11reg
-        ( 6,  5), ( 6, 18), ( 6, 33),
-        (21,  5), (21, 18), (21, 33), (21, 47),
-        (37,  5), (37, 18), (37, 33),
+        # DEBUG: 16reg
+        ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
+        (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
+        (37,  5), (37, 18), (37, 33), (37, 47), (37, 61),
         (43, 65)
+
+        # # DEBUG: 11reg
+        # ( 6,  5), ( 6, 18), ( 6, 33),
+        # (21,  5), (21, 18), (21, 33), (21, 47),
+        # (37,  5), (37, 18), (37, 33),
+        # (43, 65)
     ]
     trained_skill_policies = \
             [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
@@ -123,7 +123,7 @@ def run_task(*_):
             # Top algo kwargs
                 batch_size=5000,
                 max_path_length=50,
-                n_itr=80,
+                n_itr=160,
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
@@ -157,7 +157,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'Beta_11reg_4coin_noStopFun'  # Name of run
+exp_name_extra = 'Beta_16reg_6coin_pnl0'  # Name of run
 
 # Seed
 seed = seed if args.seed == 'keep' \
