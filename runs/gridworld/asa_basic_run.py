@@ -20,7 +20,7 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 
 
 # Parse arguments
@@ -65,6 +65,12 @@ def run_task(*_):
         (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
         (37,  5), (37, 18), (37, 33), (37, 47), (37, 61),
         (43, 65)
+
+        # # DEBUG: 15reg
+        # ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
+        # (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
+        # (37,  5), (37, 18),           (37, 47), (37, 61),
+        # (43, 65)
 
         # # DEBUG: 11reg
         # ( 6,  5), ( 6, 18), ( 6, 33),
@@ -123,7 +129,7 @@ def run_task(*_):
             # Top algo kwargs
                 batch_size=5000,
                 max_path_length=50,
-                n_itr=100,
+                n_itr=200,
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
@@ -157,7 +163,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'Beta_16reg4dir_4coin_pnl0'  # Name of run
+exp_name_extra = 'Beta_16reg4dir_4coin_b5000'  # Name of run
 
 # Seed
 seed = seed if args.seed == 'keep' \
