@@ -74,8 +74,8 @@ def run_task(*_):
     ]
     trained_skill_policies = \
             [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
-            []  # DEBUG
-            # [GridworldStepPolicy(env_spec=base_env.spec, direction=d) for d in range(4)]
+            [GridworldStepPolicy(env_spec=base_env.spec, direction=d) for d in range(4)]
+            # []  # DEBUG: don't use atomic actions
     trained_skill_policies_stop_funcs = \
             [pol.skill_stopping_func for pol in trained_skill_policies]
     skill_policy_prototype = CategoricalMLPPolicy(
@@ -123,7 +123,7 @@ def run_task(*_):
             # Top algo kwargs
                 batch_size=5000,
                 max_path_length=50,
-                n_itr=160,
+                n_itr=100,
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
@@ -157,7 +157,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'Beta_16reg_6coin_pnl0'  # Name of run
+exp_name_extra = 'Beta_16reg4dir_4coin_pnl0'  # Name of run
 
 # Seed
 seed = seed if args.seed == 'keep' \
