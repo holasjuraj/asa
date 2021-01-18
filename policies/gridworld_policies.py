@@ -65,7 +65,7 @@ class GridworldStepPolicy(Policy, Serializable):
     """
     def __init__(self, env_spec, direction):
         """
-        :param direction: 0-4 or 'up' / 'right' / 'down' / 'left'
+        :param direction: 0-3 or 'up' / 'right' / 'down' / 'left'
         """
         if isinstance(direction, int):
             self.direction = direction
@@ -81,4 +81,7 @@ class GridworldStepPolicy(Policy, Serializable):
         return []
 
     def skill_stopping_func(self, path):
+        # # DEBUG: Nstep tests - atomic action is performed N times
+        # N = 8
+        # return len(path['actions']) >= N
         return True

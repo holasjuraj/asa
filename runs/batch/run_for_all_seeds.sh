@@ -25,7 +25,7 @@ done
 
 # Make tmp dir
 tmp_dir=$(date '+asa_basic_run_output-%Y_%m_%d-%H_%M')
-mkdir $tmp_dir
+mkdir $tmp_dir || exit 1;
 script="${tmp_dir}/asa_basic_run.py"
 cp /home/h/holas3/garage/sandbox/asa/runs/gridworld/asa_basic_run.py $script
 experiments_dir="/home/h/holas3/garage/data/local/asa-basic-run"
@@ -63,7 +63,7 @@ for seed in $(seq 1 $max_seed); do
   (
     out="${tmp_dir}/${seed}_out.txt"
     printf "Launching training for seed %s\n" $seed
-    $script --seed $seed &> $out && rm $out
+    $script --seed $seed &> $out  # && rm $out
     printf "Training for seed %s finished\n" $seed
   ) &
   back_pids[$num_pids]=$!
