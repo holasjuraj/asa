@@ -51,11 +51,13 @@ class GridworldTargetPolicy(Policy, Serializable):
         return []
 
     def skill_stopping_func(self, path):
+        # Stop if I'm on target  OR  if I don't move (less useless moves = shorter training)
         moves = np.array([[-1, 0], [0, 1], [1, 0], [0, -1]])
         last_pos = path['observations'][-1][:2]
         a = special.from_onehot(path["actions"][-1])
         last_move = moves[a]
-        return np.array_equal(last_pos + last_move, self.target)
+        now_pos = last_pos + last_move
+        return np.array_equal(now_pos, self.target)  or  np.array_equal(now_pos, last_pos)
 
 
 

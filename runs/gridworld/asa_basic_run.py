@@ -60,22 +60,17 @@ def run_task(*_):
 
     # Skill policies, operating in base environment
     skill_targets = [
-        # # DEBUG: 16reg
-        # ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
-        # (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
-        # (37,  5), (37, 18), (37, 33), (37, 47), (37, 61),
-        # (43, 65)
-
-        # DEBUG: 15reg
+        # 13 basic room regions
         ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
         (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
-        (37,  5), (37, 18),           (37, 47), (37, 61),
-        (43, 65)
+        (37,  5), (37, 18), (37, 33),
+        # DEBUG: 14th goal region
+        (43, 54)
     ]
     trained_skill_policies = \
             [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
-            [GridworldStepPolicy(env_spec=base_env.spec, direction=d) for d in range(4)]
-            # []  # DEBUG: don't use atomic actions
+            []  # DEBUG: don't use atomic actions
+            # [GridworldStepPolicy(env_spec=base_env.spec, direction=d) for d in range(4)]
     trained_skill_policies_stop_funcs = \
             [pol.skill_stopping_func for pol in trained_skill_policies]
     skill_policy_prototype = CategoricalMLPPolicy(
@@ -104,7 +99,7 @@ def run_task(*_):
             skill_policy_prototype=skill_policy_prototype,
             skill_policies=trained_skill_policies,
             skill_stop_functions=trained_skill_policies_stop_funcs,
-            skill_max_timesteps=20
+            skill_max_timesteps=100
     )
     # Link hrl_policy and hrl_env, so that hrl_env can use skills
     hrl_env.set_hrl_policy(hrl_policy)
@@ -157,7 +152,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'Beta_15r4d_4coin_8step'  # Name of run
+exp_name_extra = 'Beta_M2_14reg_6coin'  # Name of run
 
 # Seed
 seed = seed if args.seed == 'keep' \
