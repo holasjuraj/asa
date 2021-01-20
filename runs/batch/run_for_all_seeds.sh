@@ -2,7 +2,7 @@
 # Launch asa_basic_run.py for all seeds.
 
 max_parallel=8
-max_seed=8
+max_seed=16
 usage="
 Usage: $(basename $0) [-N <exp_name> [-f <final_file>]]
 Launch asa_basic_run.py for all seeds

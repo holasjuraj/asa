@@ -83,7 +83,7 @@ class GridworldStepPolicy(Policy, Serializable):
         return []
 
     def skill_stopping_func(self, path):
-        # # DEBUG: Nstep tests - atomic action is performed N times
-        # N = 8
-        # return len(path['actions']) >= N
+        # DEBUG: Nstep tests - atomic action is performed N times
+        N = 8
+        return len(path['actions']) >= N
         return True
