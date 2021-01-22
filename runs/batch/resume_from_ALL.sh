@@ -129,7 +129,7 @@ for integ_method in $(seq 0 5); do
       fi
 
       # Check whether this run was already executed
-      exp_dir=$(ls -d $experiments_dir/*resumed_$itr_id--*$exp_name*--skill*$skill_name*--integ$integ_method*--s$seed 2>/dev/null | tail -1)
+      exp_dir=$(ls -d $experiments_dir/*resumed_$itr_id--*$exp_name*-skill*$skill_name*-integ$integ_method*--s$seed 2>/dev/null | tail -1)
       exp_done_file="$exp_dir/final.pkl"
       if [ $exp_dir ] && [ -f "$exp_done_file" ]; then
         # This experiment was successfully executed

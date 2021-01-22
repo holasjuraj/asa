@@ -47,7 +47,7 @@ for seed in $(seq 1 $max_seed); do
   fi
 
   # Check whether this run was already executed
-  exp_dir=$(ls -d $experiments_dir/*$exp_name*--s$seed 2>/dev/null | tail -1)
+  exp_dir=$(ls -d $experiments_dir/*$exp_name*-s$seed 2>/dev/null | tail -1)
   exp_done_file="$exp_dir/$final_file"
   if [ $exp_dir ] && [ -f "$exp_done_file" ]; then
     # This experiment was successfully executed
