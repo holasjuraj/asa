@@ -13,17 +13,12 @@ Progress:
 
 
 ==== Data ====
-- TEST6:
-    +++++   Basic_runs
-    +++++   Resumed_with_sLLLs_disc099_skill
-
-- TEST7:
-    +++++   Basic_runs
-    +++++   Resumed_with_sLLLs_disc099_skill
-    +++++   Resumed_with_Random_skill
-    +++++   Resumed_with_Top_skill
-    +++++   Resumed_with_Top_skill_NPO_PPO
-    +++++   Skill_policies
+- TEST8:    +++++
+- TEST9:    +++++
+- TEST10:   +++++
+- TEST11:   +++++
+- TEST12:   +++++
+- TEST13:   +++++
 
 
 ==== Commands ====

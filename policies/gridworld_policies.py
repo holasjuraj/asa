@@ -51,11 +51,13 @@ class GridworldTargetPolicy(Policy, Serializable):
         return []
 
     def skill_stopping_func(self, path):
+        # Stop if I'm on target  OR  if I don't move (less useless moves = shorter training)
         moves = np.array([[-1, 0], [0, 1], [1, 0], [0, -1]])
         last_pos = path['observations'][-1][:2]
         a = special.from_onehot(path["actions"][-1])
         last_move = moves[a]
-        return np.array_equal(last_pos + last_move, self.target)
+        now_pos = last_pos + last_move
+        return np.array_equal(now_pos, self.target)  or  np.array_equal(now_pos, last_pos)
 
 
 
@@ -63,10 +65,11 @@ class GridworldStepPolicy(Policy, Serializable):
     """
     Policy with fixed behaviour of moving one tile in desired direction.
     """
-    def __init__(self, env_spec, direction):
+    def __init__(self, env_spec, direction, N=1):
         """
-        :param direction: 0-4 or 'up' / 'right' / 'down' / 'left'
+        :param direction: 0-3 or 'up' / 'right' / 'down' / 'left'
         """
+        self.N = N
         if isinstance(direction, int):
             self.direction = direction
         else:
@@ -81,4 +84,6 @@ class GridworldStepPolicy(Policy, Serializable):
         return []
 
     def skill_stopping_func(self, path):
-        return True
+        # DEBUG: Nstep tests - atomic action is performed N times
+        return len(path['actions']) >= self.N
+        # return True
