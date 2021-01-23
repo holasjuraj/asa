@@ -10,12 +10,12 @@ from sandbox.asa.utils.path_trie import PathTrie
 # If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-data_dir = '/home/h/holas3/garage/data/archive/TEST16_Flat_M2s_Missing_skill'
+data_dir = '/home/h/holas3/garage/data/archive/tmp_Basic_runs_M2_6coin_6step'
 output_filename = os.path.join(data_dir, 'All_subpaths_from_pkls.tsv')
 output_file = open(output_filename, 'w')
 
 trie_min_length = 3
-trie_max_length = 8
+trie_max_length = 4
 # trie_action_map = {0: 's', 1: 'L', 2: 'R'}  # for Minibot
 # trie_action_map = {i: ch for i, ch in enumerate('ABCDEFGHIJKLMNO#^>v<')}  # for Gridworld 16reg
 trie_action_map = {i: ch for i, ch in enumerate('ABCDEFGHIJKLM^>v<')}  # for Gridworld 13reg

@@ -2,7 +2,6 @@
 
 import tensorflow as tf
 import os
-import numpy as np
 import argparse
 from datetime import datetime
 
@@ -18,7 +17,6 @@ from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy  # Policy networks
 from garage.misc.instrument import run_experiment    # Experiment-running util
-from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
@@ -44,10 +42,6 @@ args = parser.parse_args()
 
 
 def run_task(*_):
-  # Configure TF session
-  config = tf.ConfigProto()
-  config.gpu_options.allow_growth = True
-  with tf.Session(config=config).as_default() as tf_session:
 
     ## Lower level environment & policies
     # Base (original) environment.
@@ -92,43 +86,12 @@ def run_task(*_):
     )
     tf_hrl_env = TfEnv(hrl_env)
 
-
-
     # Top policy
-    # DEBUG: boost direction-skill weights
-    old_top_policy = CategoricalMLPPolicy(
-            name="OldCategoricalMLPPolicy",
+    top_policy = CategoricalMLPPolicy(
+            name="TopCategoricalMLPPolicy",
             env_spec=tf_hrl_env.spec,
             hidden_sizes=(32, 32)
     )
-    otp_init_op = tf.variables_initializer(old_top_policy.get_params())
-    otp_init_op.run()
-
-    otp_weights = unflatten_tensors(
-        old_top_policy.get_param_values(),
-        old_top_policy.get_param_shapes()
-    )
-
-    direction_skills_boost_factor = 10
-    direction_skills_boost_factor /= 32  # number of neurons on previous layer
-    ntp_weights = [np.copy(value) for value in otp_weights]
-    ntp_weights[-2][:, -4:] += direction_skills_boost_factor    # last layer weights
-    ntp_weights[-1][-4:] += direction_skills_boost_factor       # last layer bias
-
-    top_policy = CategoricalMLPPolicy(
-        env_spec=tf_hrl_env.spec,
-        hidden_sizes=(32, 32),
-        name="TopCategoricalMLPPolicy"
-    )
-    ntp_init_op = tf.variables_initializer(top_policy.get_params())
-    ntp_init_op.run()
-
-    top_policy.set_param_values(
-        flattened_params=flatten_tensors(ntp_weights)
-    )
-    # /DEBUG
-
-
 
     # Hierarchy of policies
     hrl_policy = HierarchicalPolicy(
@@ -166,17 +129,13 @@ def run_task(*_):
             }
     )
 
-    # ## Launch training
-    # # Configure TF session
-    # config = tf.ConfigProto()
-    # config.gpu_options.allow_growth = True
-    # with tf.Session(config=config) as session:
-    #     # Train HRL agent
-    #     asa_algo.train(sess=session)
-
-    asa_algo.train(
-        sess=tf_session
-    )
+    ## Launch training
+    # Configure TF session
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config) as session:
+        # Train HRL agent
+        asa_algo.train(sess=session)
 
 
 ## Run directly
