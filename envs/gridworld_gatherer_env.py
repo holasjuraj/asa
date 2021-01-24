@@ -210,10 +210,10 @@ class GridworldGathererEnv(AsaEnv, Serializable):
         [Position of agent] + [coin holding] + [coins picked]
         - position of agent: [row, col]
         - coin holding: flag whether agent is holding a coin (1) or not (0)
-        - coins picked: vector, for each coin 0 if it has been picked, 0 if not
+        - coins picked: vector, for each coin 1 if it has been picked, 0 if not
         """
         high = np.concatenate((
-            [self.n_col, self.n_row],
+            [self.n_row, self.n_col],
             [1],
             [1] * self.coins_num
         ))
@@ -227,7 +227,7 @@ class GridworldGathererEnv(AsaEnv, Serializable):
         [Position of agent] + [coin holding] + [coins picked]
         - position of agent: [row, col]
         - coin holding: flag whether agent is holding a coin (1) or not (0)
-        - coins picked: vector, for each coin 0 if it has been picked, 0 if not
+        - coins picked: vector, for each coin 1 if it has been picked, 0 if not
         """
         return np.concatenate((
             self.agent_pos,

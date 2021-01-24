@@ -6,7 +6,7 @@
 #
 # shellcheck disable=SC2045
 
-max_parallel=20
+max_parallel=15
 usage="
 Usage: $(basename $0) -d <data_dir> (-p <skill_policies_dir> | -P) [-N <exp_name>] [-n <skill_name>] [-g gap] [-i min_itr_num] [-I max_itr_num]
 Launch asa_resume_with_new_skill.py for all possible options:
@@ -56,10 +56,10 @@ fi
 
 
 # Make tmp dir
-tmp_dir=$(date '+resumed_trainings_output-%Y_%m_%d-%H_%M_%S')
+tmp_dir=$(date '+asa_resumed_trainings_output-%Y_%m_%d-%H_%M_%S')
 mkdir $tmp_dir
 script="${tmp_dir}/asa_resume_with_new_skill.py"
-cp /home/h/holas3/garage/sandbox/asa/runs/asa_resume_with_new_skill.py $script
+cp /home/h/holas3/garage/sandbox/asa/runs/gridworld/asa_resume_with_new_skill.py $script
 experiments_dir="/home/h/holas3/garage/data/local/asa-resume-with-new-skill"
 failed_dir="$experiments_dir/../failed/$(basename $experiments_dir)"
 mkdir -p $failed_dir
@@ -67,8 +67,8 @@ mkdir -p $failed_dir
 # Launch all trainings
 num_pids=0
 
-for integ_method in $(seq 0 5); do
-#for integ_method in 3; do  # DEBUG only use specific integrator (3 = SUBPATH_SKILLS_AVG)
+#for integ_method in $(seq 0 5); do
+for integ_method in 3; do  # DEBUG only use specific integrator (3 = SUBPATH_SKILLS_AVG)
 
   for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
     seed=`echo "$seed_dir" | sed -n "s/^.*--s\([0-9]\+\).*$/\1/p"`

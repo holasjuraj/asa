@@ -117,7 +117,7 @@ def run_task(*_):
             low_algo_cls=TRPO,
             # Top algo kwargs
                 batch_size=5000,
-                max_path_length=50,
+                max_path_length=50,  # ideal path is 42
                 n_itr=150,
                 discount=0.99,
                 force_batch_sampler=True,
