@@ -1,17 +1,25 @@
 ==== SCREENS ====
 
-asa1 screen:
+asa1 screen - NEW SKILL vvv:
+    - GPU 0
+    - Skill_vvv
+runs/batch/train_new_skills.sh  -d data/archive/Basic_runs_M2_6coin_6step \
+                                -n Skill_vvv \
+                                -g 10   -i 19   -I 139
+runs/tools/check_experiments.sh  -N Skill_vvv  -d data/local/asa-train-new-skill
+
+
+==== INACTIVE ====
+
+RESUME GWTarget:
     - GPU random
     - From_all_with_GWTarget
 runs/batch/resume_from_ALL.sh  -N From_all_with_GWTarget \
-                               -d data/archive/tmp_Basic_runs_M2_6coin_6step \
+                               -d data/archive/Basic_runs_M2_6coin_6step \
                                -P \
                                -n GWTarget \
-                               -g 10   -i 20   -I 140
-runs/tools/check_experiments.sh  -N From_all_with_GWTarget  -f itr_149.pkl  -d data/local/asa-resume-with-new-skill
-
-
-==== OLD ONES ====
+                               -g 10   -i 19   -I 139
+runs/tools/check_experiments.sh  -N From_all_with_GWTarget  -d data/local/asa-resume-with-new-skill
 
 RESUME:
     TEST7

@@ -62,9 +62,9 @@ for seed in $(seq 1 $max_seed); do
   # Launch another training in batch
   (
     out="${tmp_dir}/${seed}_out.txt"
-    printf "Launching training for seed %s\n" $seed
+    printf "%s    Launching training for seed %s\n" "$(date +'%x %T')" $seed
     $script --seed $seed &> $out  # && rm $out
-    printf "Training for seed %s finished\n" $seed
+    printf "%s    Training for seed %s finished\n" "$(date +'%x %T')" $seed
   ) &
   back_pids[$num_pids]=$!
   num_pids=$((num_pids+1))

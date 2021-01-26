@@ -5,7 +5,7 @@
 # This script launches asa_train_new_skill.py for all N folders = seeds and for all itr_N.pkl files in them.
 # However, some runs may fail before they finish (produce final.pkl). This script also looks for such runs, archives their directories and rerun them.
 
-max_parallel=20
+max_parallel=10
 usage="
 Usage: $(basename $0) -d <data_dir> -n <skill_name> [-g gap] [-i min_itr_num] [-I max_itr_num]
 Fix launching asa_train_new_skill.py for all itr_*.pkl files for all seeds in given folder - rerun failed runs.
@@ -44,10 +44,10 @@ fi
 
 
 # Make tmp and "failed" dirs
-tmp_dir=$(date '+train_new_skills_trainings-%Y_%m_%d-%H_%M_%S')
+tmp_dir=$(date '+asa_train_new_skills_trainings-%Y_%m_%d-%H_%M_%S')
 mkdir $tmp_dir
 script="${tmp_dir}/asa_train_new_skill.py"
-cp /home/h/holas3/garage/sandbox/asa/runs/asa_train_new_skill.py $script
+cp /home/h/holas3/garage/sandbox/asa/runs/gridworld/asa_train_new_skill.py $script
 experiments_dir="/home/h/holas3/garage/data/local/asa-train-new-skill"
 failed_dir="$experiments_dir/../failed/$(basename $experiments_dir)"
 mkdir -p $failed_dir
@@ -85,12 +85,12 @@ for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
       num_pids=0
     fi
 
-    # Find currect skill policy file
+    # Check whether this run was already executed
     itr_id=$(basename $itr_f .pkl)  # "itr_N"
-    skill_policy_dir=$(ls -d "$experiments_dir"/*after_*"$itr_id"--*"$skill_name"*--s"$seed" 2>/dev/null | tail -1)
+    skill_policy_dir=$(ls -d "$experiments_dir"/*after_*"$itr_id"--*"$skill_name"*-s"$seed" 2>/dev/null | tail -1)
     skill_policy_file="$skill_policy_dir/final.pkl"
     if [ $skill_policy_dir ] && [ -f "$skill_policy_file" ]; then
-      # Skill policy is ok
+      # This experiment was successfully executed
       continue
     fi
     if [ $skill_policy_dir ]; then
@@ -102,10 +102,10 @@ for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
     # Launch another training in batch
     (
       out="${tmp_dir}/${itr_id}_s${seed}_out.txt"
-      printf "Launching new skill training from seed %s, %s\n" $seed $itr_id
+      printf "%s    Launching new skill training from seed %s, %s\n" "$(date +'%x %T')" $seed $itr_id
       # Run
       $script --file $itr_f --seed $seed &> $out  # && rm $out
-      printf "Training from seed %s, %s finished\n" $seed $itr_id
+      printf "%s    Training from seed %s, %s finished\n" "$(date +'%x %T')" $seed $itr_id
     ) &
     back_pids[$num_pids]=$!
     num_pids=$((num_pids+1))
