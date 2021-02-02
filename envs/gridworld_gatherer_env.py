@@ -160,12 +160,13 @@ class GridworldGathererEnv(AsaEnv, Serializable):
 
 
     # noinspection PyMissingConstructor
-    def __init__(self, plot=None):
+    def __init__(self, plot=None, coin_pickup_reward=False):
         """
         :param plot: which plots to generate. Only 'visitation' plot is supported now.
                 {'visitation': <opts>}
                 where opts = {'save': <directory or False>, 'live': <boolean> [, 'alpha': <0..1>][, 'noise': <0..1>]}
         """
+        self.coin_pickup_reward = coin_pickup_reward
         # Normalize char map
         m = np.array([list(row.upper()) for row in self.MAP])
         m[np.logical_or(m == '.', m == ' ')] = 'F'
@@ -292,6 +293,8 @@ class GridworldGathererEnv(AsaEnv, Serializable):
                 # pick a coin if 1) it's still there, and 2) I'm not holding another coin
                 self.coin_holding = True
                 self.coins_picked[coin_idx] = True
+                if self.coin_pickup_reward:
+                    reward = 0.5
 
         elif next_state_type == 'G':  # goal (coin drop-off area)
             if self.coin_holding:
