@@ -20,10 +20,6 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
 
-## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-os.environ['CUDA_VISIBLE_DEVICES'] = np.random.choice(['0', '1'])
-
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Resume ASA training with new skill')
@@ -49,17 +45,24 @@ new_skill_policy_file = args.skill_policy or \
                 '/home/h/holas3/garage/sandbox/asa/data/local/asa-train-new-skill/2020_03_10-15_10--after_itr_3--For_all_disc099_Skill_sLLLs--s1/final.pkl'
                 # DEBUG For direct runs: path to file with new skill policy
 
-# DEBUG For runs without loaded skill - to use GridworldTargetPolicy as new skill
-new_skill_policy_file = None
-skill_policy_exp_name = 'GWTarget'
-# skill_policy_exp_name = 'GWRandom'
-new_skill_subpath = {
-    'actions': [15, 15, 15],
-    'start_observations': np.array([[21, 47,  1,  0, 0, 1, 0, 0, 1],  # in region I, holding coin, some coins picked
-                                    [21, 47,  1,  0, 1, 1, 0, 1, 1],
-                                    [21, 47,  1,  1, 1, 1, 1, 1, 1],
-                                   ])
-}
+# # DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
+# new_skill_policy_file = None
+# skill_policy_exp_name = 'GWTarget'
+# # skill_policy_exp_name = 'GWRandom'
+# new_skill_subpath = {
+#     'actions': [15, 15, 15],
+#     'start_observations': np.array([[21, 47,  1,  0, 0, 1, 0, 0, 1],  # in region I, holding coin, some coins picked
+#                                     [21, 47,  1,  0, 1, 1, 0, 1, 1],
+#                                     [21, 47,  1,  1, 1, 1, 1, 1, 1],
+#                                    ])
+# }
+# # /DEBUG
+
+
+
+## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
 
 
 
@@ -93,17 +96,18 @@ def run_task(*_):
         ]
         trained_skill_policies = \
                 [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
-                [GridworldStepPolicy(env_spec=base_env.spec, direction=d, N=3) for d in range(4)] + \
+                [GridworldStepPolicy(env_spec=base_env.spec, direction=d, N=7) for d in range(4)] + \
                 [
-                 # new_skill_policy
-                 GridworldTargetPolicy(env_spec=base_env.spec, target=(43, 54))    # DEBUG use GridworldTargetPolicy as new skill
+                 new_skill_policy
+                 # GridworldTargetPolicy(env_spec=base_env.spec, target=(43, 54))    # DEBUG use GridworldTargetPolicy as new skill
+                 # GridworldStepPolicy(env_spec=base_env.spec, direction='down', N=7*3)    # DEBUG use GridworldTargetPolicy as new skill
                  # GridworldRandomPolicy(env_spec=base_env.spec)                     # DEBUG use GridworldRandomPolicy as new skill
                 ]
         trained_skill_policies_stop_funcs = \
                 [pol.skill_stopping_func for pol in trained_skill_policies[:-1]] + \
                 [
-                 # new_skill_stop_func
-                 trained_skill_policies[-1].skill_stopping_func                    # DEBUG use Gridworld*Policy as new skill
+                 new_skill_stop_func
+                 # trained_skill_policies[-1].skill_stopping_func                    # DEBUG use Gridworld*Policy as new skill
                 ]
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 
@@ -178,7 +182,7 @@ def run_task(*_):
                 # Top algo kwargs
                     batch_size=5000,
                     max_path_length=50,
-                    n_itr=150,
+                    n_itr=300,
                     start_itr=saved_data['itr'] + 1,  # Continue from previous iteration number
                     discount=0.99,
                     force_batch_sampler=True,

@@ -16,9 +16,6 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 from garage.misc import logger
 
 
-# If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Train new skill to be used in resumed ASA training')
@@ -34,6 +31,11 @@ snapshot_file = args.file or \
                 '/home/h/holas3/garage/data/archive/Basic_runs_M2_6coin_6step/2021_01_20-12_04--Basic_run_M2_13r4d_6coin_6step--s14/itr_59.pkl'
                 # DEBUG For direct runs: path to snapshot file (itr_N.pkl) from which to train new skill
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
+
+
+## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
 
 
 def run_task(*_):

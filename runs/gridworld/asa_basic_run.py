@@ -19,9 +19,6 @@ from garage.tf.policies import CategoricalMLPPolicy  # Policy networks
 from garage.misc.instrument import run_experiment    # Experiment-running util
 
 
-## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Resume ASA training with new skill')
@@ -32,13 +29,10 @@ parser.add_argument('-s', '--seed',
 args = parser.parse_args()
 
 
-# plot = True
-# if plot:
-#     # Workaround to create Qt application in main thread
-#     import matplotlib
-#     matplotlib.use('qt5Agg')
-#     import matplotlib.pyplot as plt
-#     plt.figure()
+## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
+
 
 
 def run_task(*_):
@@ -69,8 +63,7 @@ def run_task(*_):
     ]
     trained_skill_policies = \
             [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
-            [GridworldStepPolicy(env_spec=base_env.spec, direction=d, N=3) for d in range(4)]
-            # []  # DEBUG: don't use atomic actions
+            [GridworldStepPolicy(env_spec=base_env.spec, direction=d, N=7) for d in range(4)]
     trained_skill_policies_stop_funcs = \
             [pol.skill_stopping_func for pol in trained_skill_policies]
     skill_policy_prototype = CategoricalMLPPolicy(
@@ -118,7 +111,7 @@ def run_task(*_):
             # Top algo kwargs
                 batch_size=5000,
                 max_path_length=50,  # ideal path is 42
-                n_itr=150,
+                n_itr=300,
                 discount=0.99,
                 force_batch_sampler=True,
             low_algo_kwargs={
@@ -145,14 +138,10 @@ def run_task(*_):
 
 
 ## Run pickled
-# # Erase snapshots from previous instant run
-# import shutil
-# shutil.rmtree('/home/h/holas3/garage/data/local/asa_basic_run/instant_run', ignore_errors=False)
-
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'Basic_run_M2_13r4d_6coin_6step'  # Name of run
+exp_name_extra = 'Basic_run_M2_13r4d_6coin_7step_300itrs'  # Name of run
 
 # Seed
 seed = seed if args.seed == 'keep' \
