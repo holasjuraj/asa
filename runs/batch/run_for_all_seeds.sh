@@ -1,24 +1,26 @@
 #!/bin/bash
 # Launch asa_basic_run.py for all seeds.
 
-max_parallel=8
 max_seed=16
 usage="
-Usage: $(basename $0) [-N <exp_name> [-f <final_file>]]
+Usage: $(basename $0) [-N <exp_name> [-f <final_file>]] [-X max_parallel]
 Launch asa_basic_run.py for all seeds
 
 Options:
   -N exp_name      (part of) experiment name, used to check for failed runs
   -f final_file    name of final file marking successful run. Default = final.pkl
+  -X max_parallel          maximal number of parallel runs. Default = 16
 "
 
 # Check arguments
 exp_name="NOTHING"
 final_file="final.pkl"
-while getopts N:f: option; do
+max_parallel=16
+while getopts N:f:X: option; do
   case "${option}" in
     N) exp_name=${OPTARG}; ;;
     f) final_file=${OPTARG}; ;;
+    X) max_parallel=${OPTARG}; ;;
     *) echo "$usage" ; exit 1; ;;
   esac
 done

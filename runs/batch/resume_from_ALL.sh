@@ -6,9 +6,8 @@
 #
 # shellcheck disable=SC2045
 
-max_parallel=15
 usage="
-Usage: $(basename $0) -d <data_dir> (-p <skill_policies_dir> | -P) [-N <exp_name>] [-n <skill_name>] [-g gap] [-i min_itr_num] [-I max_itr_num]
+Usage: $(basename $0) -d <data_dir> (-p <skill_policies_dir> | -P) [-N <exp_name>] [-n <skill_name>] [-g gap] [-i min_itr_num] [-I max_itr_num] [-X max_parallel]
 Launch asa_resume_with_new_skill.py for all possible options:
 - all seeds (subfolders of data_dir folder)
 - all iterations (itr_N.pkl files)
@@ -23,6 +22,7 @@ Options:
   -g gap                   do not run for every itr_*.pkl file, but for every N-th file. Default = 1
   -i iteration_number      minimal iteration number to run for
   -I iteration_number      maximal iteration number to run for
+  -X max_parallel          maximal number of parallel runs. Default = 16
 "
 
 # Check arguments
@@ -35,7 +35,8 @@ skill_name=""
 ignore_skill_files=false
 min_itr_num=0
 max_itr_num=9999
-while getopts d:p:PN:n:g:i:I: option; do
+max_parallel=16
+while getopts d:p:PN:n:g:i:I:X: option; do
   case "${option}" in
     d) data_dir=${OPTARG}; ;;
     p) skill_policies_dir=${OPTARG}; ;;
@@ -45,6 +46,7 @@ while getopts d:p:PN:n:g:i:I: option; do
     g) gap=${OPTARG}; ;;
     i) min_itr_num=${OPTARG}; ;;
     I) max_itr_num=${OPTARG}; ;;
+    X) max_parallel=${OPTARG}; ;;
     *) echo "$usage" ; exit 1; ;;
   esac
 done
@@ -73,29 +75,31 @@ for integ_method in 3; do  # DEBUG only use specific integrator (3 = SUBPATH_SKI
   for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
     seed=`echo "$seed_dir" | sed -n "s/^.*--s\([0-9]\+\).*$/\1/p"`
 
-    # Get last itr_N.pkl file name
-    last_itr_file=$(basename "$(ls -t1 $seed_dir/itr_*.pkl | head -1)")
+    # Get number of itr_N.pkl files
+    n_itrs=$(ls -1 "$seed_dir/"itr_*.pkl | wc -l)
 
-    itr_i=0
-    for itr_f in $(ls -tr "$seed_dir/"itr_*.pkl); do
+    itr_gap_i=0
+    for itr_i in $(seq 0 $((n_itrs-1)) ); do
       # Skip $gap iterations
-      itr_i=$((itr_i+1))
-      if [ $itr_i -ne $gap ]; then
+      itr_gap_i=$((itr_gap_i+1))
+      if [ $itr_gap_i -ne $gap ]; then
         continue
       fi
-      itr_i=0
+      itr_gap_i=0
 
       # Do not start training from last itr_N.pkl
-      if [ "$(basename $itr_f)" == "$last_itr_file" ]; then
+      if [ $itr_i -eq $(($n_itrs-1)) ]; then
         continue
       fi
 
       # Do not start training from itr files outside of range
-      itr_id=$(basename $itr_f .pkl)  # "itr_N"
-      itr_num=${itr_id:4}
-      if [[ $itr_num -lt $min_itr_num ]] || [[ $max_itr_num -lt $itr_num ]]; then
+      if [[ $itr_i -lt $min_itr_num ]] || [[ $max_itr_num -lt $itr_i ]]; then
         continue
       fi
+
+      # Get itr_N.pkl file
+      itr_f="$seed_dir/itr_${itr_i}.pkl"
+      itr_id="itr_${itr_i}"  # "itr_N"
 
       # Wait for batch if we reached max processes
       if [ $num_pids -ge $max_parallel ]; then
