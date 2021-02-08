@@ -9,17 +9,17 @@ import numpy as np
 
 
 # Define input/output
-data_dir = '/home/h/holas3/garage/data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Resumed_with_Top_skill_NPO_PPO'
+data_dir = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Resumed_with_GWTarget_skill'
 output_format = 'xlsx'  # 'csv' or xlsx
 output_filename = os.path.join(data_dir, 'All_data--' + os.path.basename(data_dir) + '.' + output_format)
 output_columns = [
         'ExpName', 'ExpSkill', 'ExpIntegrator', 'ExpResumedFrom', 'ExpSeed', 'ExpDatetime',
         'Iteration', 'AverageDiscountedReturn', 'AverageReturn',
         'StdReturn', 'MaxReturn', 'MinReturn',
-        'NumTrajs', 'SuccessfulTrajs', 'ItrTime', 'Time',
-        'DiscreteActions/0', 'DiscreteActions/1', 'DiscreteActions/2'
+        'NumTrajs', 'SuccessfulTrajs', 'ItrTime', 'Time'
 ]
-discrete_actions = 3
+discrete_actions = 18
+output_columns += [f'DiscreteActions/{i}' for i in range(discrete_actions)]
 
 
 # Prepare TF config
