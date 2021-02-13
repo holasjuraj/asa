@@ -255,6 +255,14 @@ class GridworldGathererEnv(AsaEnv, Serializable):
         """
         obs = np.asarray(np.round(start_obs), dtype='int32')
         self.agent_pos = obs[:2]
+        # # DEBUG initialize at random position
+        # while True:
+        #     pos = (np.random.randint(self.n_row), np.random.randint(self.n_col))
+        #     if self.map[pos[0], pos[1]] in ['F', 'S'] \
+        #             and (pos[0] < 30 or pos[1] < 41):
+        #         break
+        # self.agent_pos = np.array(pos)
+        # # /DEBUG
         self.coin_holding = obs[2] > 0.5
         self.coins_picked = obs[3:] > 0.5
         return self.get_current_obs()
