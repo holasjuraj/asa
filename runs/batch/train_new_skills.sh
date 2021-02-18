@@ -46,7 +46,7 @@ fi
 
 
 # Make tmp and "failed" dirs
-tmp_dir=$(date '+asa_train_new_skills_trainings-%Y_%m_%d-%H_%M_%S')
+tmp_dir="asa_train_new_skills_outputs-$skill_name-$(date '+%Y_%m_%d-%H_%M_%S')"
 mkdir $tmp_dir
 script="${tmp_dir}/asa_train_new_skill.py"
 cp /home/h/holas3/garage/sandbox/asa/runs/gridworld/asa_train_new_skill.py $script

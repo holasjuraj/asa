@@ -58,7 +58,7 @@ fi
 
 
 # Make tmp dir
-tmp_dir=$(date '+asa_resumed_trainings_output-%Y_%m_%d-%H_%M_%S')
+tmp_dir="asa_resumed_trainings_output-$exp_name-$(date '+%Y_%m_%d-%H_%M_%S')"
 mkdir $tmp_dir
 script="${tmp_dir}/asa_resume_with_new_skill.py"
 cp /home/h/holas3/garage/sandbox/asa/runs/gridworld/asa_resume_with_new_skill.py $script

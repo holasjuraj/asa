@@ -150,8 +150,8 @@ def run_task(*_):
         low_algo_cls = saved_data['low_algo_cls']
 
         # DEBUG set custom training params (should`ve been set in asa_basic_run)
-        low_algo_kwargs['batch_size'] = 2500
-        low_algo_kwargs['max_path_length'] = 100  # maximum distance in map isn 108
+        low_algo_kwargs['batch_size'] = 20000
+        low_algo_kwargs['max_path_length'] = 800  # maximum distance in map is 108
         low_algo_kwargs['n_itr'] = 300
         low_algo_kwargs['discount'] = 0.99
 
@@ -205,7 +205,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'Skill_vvv'  # Name of run
+exp_name_extra = 'Skill_Jvvv_b20k_mpl800'  # Name of run
 
 # Seed
 seed = seed if args.seed == 'keep' \
