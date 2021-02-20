@@ -92,7 +92,7 @@ def run_task(*_):
             skill_policy_prototype=skill_policy_prototype,
             skill_policies=trained_skill_policies,
             skill_stop_functions=trained_skill_policies_stop_funcs,
-            skill_max_timesteps=100
+            skill_max_timesteps=150
     )
     # Link hrl_policy and hrl_env, so that hrl_env can use skills
     hrl_env.set_hrl_policy(hrl_policy)

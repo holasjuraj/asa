@@ -38,11 +38,11 @@ parser.add_argument('-s', '--seed',
 args = parser.parse_args()
 
 snapshot_file = args.file or \
-                '/home/h/holas3/garage/data/archive/tmp_Basic_runs_M2_6coin_6step/2021_01_18-20_11--Beta_M2_13r4d_6coin_6step--s3/itr_49.pkl'
+                '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Basic_runs/2021_02_02-09_50--Basic_run_M2_13r4d_6coin_7step_300itrs--s4/itr_79.pkl'
                 # DEBUG For direct runs: path to snapshot file (itr_N.pkl) to start from
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 new_skill_policy_file = args.skill_policy or \
-                '/home/h/holas3/garage/sandbox/asa/data/local/asa-train-new-skill/2020_03_10-15_10--after_itr_3--For_all_disc099_Skill_sLLLs--s1/final.pkl'
+                '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Jvvv_rpos_b20k_mpl800--good_a0.25/2021_02_17-22_01--after_itr_79--Skill_Jvvv_rpos_b20k_mpl800--s4/final.pkl'
                 # DEBUG For direct runs: path to file with new skill policy
 
 # # DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
@@ -82,7 +82,8 @@ def run_task(*_):
                 new_skill_data = dill.load(file)
             new_skill_policy = new_skill_data['policy']
             new_skill_subpath = new_skill_data['subpath']
-            new_skill_stop_func = lambda path: path['observations'][-1] in new_skill_subpath['end_observations']
+            unique_end_obss = np.unique(new_skill_subpath['end_observations'], axis=0)
+            new_skill_stop_func = lambda path: (path['observations'][-1] == unique_end_obss).all(axis=1).any()
 
         ## Lower level environment & policies
         # Base (original) environment.
@@ -163,7 +164,7 @@ def run_task(*_):
                 skill_policy_prototype=skill_policy_prototype,
                 skill_policies=trained_skill_policies,
                 skill_stop_functions=trained_skill_policies_stop_funcs,
-                skill_max_timesteps=100  # TODO? should match number in asa_basic_run
+                skill_max_timesteps=150  # TODO? should match number in asa_basic_run
         )
         # Link hrl_policy and hrl_env, so that hrl_env can use skills
         hrl_env.set_hrl_policy(hrl_policy)
@@ -217,9 +218,9 @@ def run_task(*_):
 
 ## Run pickled
 # General experiment settings
-seed = 3                    # Will be ignored if --seed option is used
+seed = 4                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'From_all_with_GWTarget'  # Name of run
+exp_name_extra = 'Small_newStopFun_smpl150'  # Name of run
 
 # Skill policy experiment name
 if new_skill_policy_file:

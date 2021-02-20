@@ -1,46 +1,103 @@
 ==== SCREENS ====
 
-asa1 screen - NEW SKILL vvv:
-    - GPU 0
-    - Skill_vvv
-runs/batch/train_new_skills.sh  -d data/archive/Basic_runs_M2_6coin_6step \
-                                -n Skill_vvv \
-                                -g 10   -i 19   -I 139
-runs/tools/check_experiments.sh  -N Skill_vvv  -d data/local/asa-train-new-skill
+asa1 screen -
+
 
 
 ==== INACTIVE ====
 
+BASIC RUN:
+    - GPU both
+    - 7step
+    - name Basic_run_M2_13r4d_6coin_7step_300itrs
+    runs/batch/run_for_all_seeds.sh  -N Basic_run_M2_13r4d_6coin_7step_300itrs \
+                                     -f itr_299.pkl
+    runs/tools/check_experiments.sh  -N Basic_run_M2_13r4d_6coin_7step_300itrs  -d data/local/asa-basic-run  -f itr_299.pkl
+
+
 RESUME GWTarget:
-    - GPU random
-    - From_all_with_GWTarget
-runs/batch/resume_from_ALL.sh  -N From_all_with_GWTarget \
-                               -d data/archive/Basic_runs_M2_6coin_6step \
-                               -P \
-                               -n GWTarget \
-                               -g 10   -i 19   -I 139
-runs/tools/check_experiments.sh  -N From_all_with_GWTarget  -d data/local/asa-resume-with-new-skill
+    - GPU 0 (32x)
+    - GWTarget (3x)
+    - name From_all
+    runs/batch/resume_from_ALL.sh  -N From_all \
+                                   -d data/archive/TEST20_Resumed_from_all/Basic_runs \
+                                   -P \
+                                   -n GWTarget \
+                                   -g 10   -i 19   -I 149 \
+                                   -X 32
+    runs/tools/check_experiments.sh  -N From_all--skill_GWTarget  -d data/local/asa-resume-with-new-skill
 
-RESUME:
-    TEST7
-    Env: penalty 0.05, dicount 0.9
-    Skill: sLLLs from TEST4
-runs/batch/resume_from_ALL.sh -d data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Basic_runs -p data/archive/TEST4_Resumed_80itrs_discount0.99/Skill_policies -N disc09_ -n LLL -g 4 -I 40
+RESUME vvv:
+    - GPU 0 (16x)
+    - policy file (3x)
+    - name From_all
+    runs/batch/resume_from_ALL.sh  -N From_all \
+                                   -d data/archive/TEST20_Resumed_from_all/Basic_runs \
+                                   -p data/archive/TEST20_Resumed_from_all/Skill_policies \
+                                   -n Skill_vvv \
+                                   -g 10   -i 19   -I 149 \
+                                   -X 16
+    runs/tools/check_experiments.sh  -N From_all--skill_Skill_vvv  -d data/local/asa-resume-with-new-skill
 
-NEW SKILL:
-    TEST7
-    Env: penalty 0.05, dicount 0.9
-    Skill: Top
-runs/batch/train_new_skills.sh -d data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Basic_runs -n Top -g 4
+RESUME Jvvv:
+    - GPU 0 (16x)
+    - policy file (3x)
+    - skill max path length 350
+    - name From_all_smpl350
+    runs/batch/resume_from_ALL.sh  -N From_all_smpl350 \
+                                   -d data/archive/TEST20_Resumed_from_all/Basic_runs \
+                                   -p data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Jvvv_rpos_b20k_mpl800--good_a0.25 \
+                                   -n Skill_Jvvv_rpos_b20k_mpl800 \
+                                   -g 10   -i 19   -I 149 \
+                                   -X 16
+    runs/tools/check_experiments.sh  -N From_all_smpl350--skill_Skill_Jvvv_rpos_b20k_mpl800  -d data/local/asa-resume-with-new-skill
 
-RESUME:
-    TEST7
-    Env: penalty 0.05, dicount 0.9
-    Skill: Top skill from TEST7
-runs/batch/resume_from_ALL.sh -d data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Basic_runs -p data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Skill_policies -N disc09_ -n Top -g 4 -I 40
+RESUME Top:
+    - GPU 0 (16x)
+    - policy file (3x)
+    - name From_all
+    runs/batch/resume_from_ALL.sh  -N From_all \
+                                   -d data/archive/TEST20_Resumed_from_all/Basic_runs \
+                                   -p data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Top_b20k_mpl800--good_a0.25 \
+                                   -n Skill_Top_b20k_mpl800 \
+                                   -g 10   -i 19   -I 149 \
+                                   -X 16
+    runs/tools/check_experiments.sh  -N From_all--skill_Skill_Top_b20k_mpl800  -d data/local/asa-resume-with-new-skill
 
-RESUME:
-    TEST7
-    Env: penalty 0.05, dicount 0.9
-    Skill: Random policy
-runs/batch/resume_from_ALL.sh -d data/archive/TEST7_Resumed_80itrs_discount0.9_pnl0.05/Basic_runs -P -N disc09_ -n Random -g 4 -I 40
+
+NEW SKILL vvv:
+    - GPU 0 (10x)
+    - path length 3-3
+    - vvv skill
+    - name Skill_vvv
+    runs/batch/train_new_skills.sh  -d data/archive/TEST20_Resumed_from_all/Basic_runs \
+                                    -n Skill_vvv \
+                                    -g 10   -i 19   -I 149
+    runs/tools/check_experiments.sh  -N Skill_vvv  -d data/local/asa-train-new-skill
+
+NEW SKILL Jvvv:
+    - GPU 0 (20x)
+    - env: random pos
+    - path length 4-4
+    - Jvvv skill
+    - batch size 20_000
+    - max path length 800
+    - name Skill_Jvvv_rpos_b20k_mpl800
+    runs/batch/train_new_skills.sh  -d data/archive/TEST20_Resumed_from_all/Basic_runs \
+                                    -n Skill_Jvvv_rpos_b20k_mpl800 \
+                                    -g 10   -i 19   -I 149 \
+                                    -X 20
+    runs/tools/check_experiments.sh  -N Skill_Jvvv_rpos_b20k_mpl800  -d data/local/asa-train-new-skill
+
+NEW SKILL Top:
+    - GPU 0 (20x)
+    - path length 4-4
+    - top skill
+    - batch size 20_000
+    - max path length 800
+    - name Skill_Top_b20k_mpl800
+    runs/batch/train_new_skills.sh  -d data/archive/TEST20_Resumed_from_all/Basic_runs \
+                                    -n Skill_Top_b20k_mpl800 \
+                                    -g 10   -i 19   -I 149 \
+                                    -X 20
+    runs/tools/check_experiments.sh  -N Skill_Top_b20k_mpl800  -d data/local/asa-train-new-skill

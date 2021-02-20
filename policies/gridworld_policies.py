@@ -43,7 +43,8 @@ class GridworldTargetPolicy(Policy, Serializable):
            or  next_pos[0] >= len(m)  \
            or  next_pos[1] >= len(m[0])  \
            or  m[next_pos[0]][next_pos[1]] in '#WXx':
-            move_1 = move_2
+            if tuple(move_2) != (0, 0):  # If secondary move is not doing anything, use the primary move (will stop the skill)
+                move_1 = move_2
 
         return moves[tuple(move_1)], dict()
 
@@ -54,10 +55,12 @@ class GridworldTargetPolicy(Policy, Serializable):
         # Stop if I'm on target  OR  if I don't move (less useless moves = shorter training)
         moves = np.array([[-1, 0], [0, 1], [1, 0], [0, -1]])
         last_pos = path['observations'][-1][:2]
+        if len(path['observations']) > 1  \
+                and  np.array_equal(last_pos, path['observations'][-2][:2]):
+            return True  # I don't move -> stop skill
         a = special.from_onehot(path["actions"][-1])
         last_move = moves[a]
-        now_pos = last_pos + last_move
-        return np.array_equal(now_pos, self.target)  or  np.array_equal(now_pos, last_pos)
+        return np.array_equal(last_pos + last_move, self.target)
 
 
 
