@@ -26,7 +26,7 @@ while getopts N:f:X: option; do
 done
 
 # Make tmp dir
-tmp_dir="asa_basic_run_output-$exp_name-$(date '+%Y_%m_%d-%H_%M_%S')"
+tmp_dir="_experiment_outputs/asa_basic_run_output-$exp_name-$(date '+%Y_%m_%d-%H_%M_%S')"
 mkdir $tmp_dir || exit 1;
 script="${tmp_dir}/asa_basic_run.py"
 cp /home/h/holas3/garage/sandbox/asa/runs/gridworld/asa_basic_run.py $script
