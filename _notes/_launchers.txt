@@ -1,3 +1,20 @@
+==== PLAN ====
++ decide parameters affecting training time - itrs = 300 (for start), smpl = 150
++ train new basic runs
+    + are more of them successful? --> more or less equal
+    + do they yield good frequent subpaths of length 4 | <=4? --> not quite, T20 Basic runs seem better
+- do some of following:
+    - reuse *old* basic runs: --> will do now
+        + train new Top skill (sbpt2to4) from *old* basic runs
+        + no need to train new Jvvv skill
+        - resume with *old* Jvvv (+), GWR skills, and new Top skill (+)
+        + no need to resume from GWT skill
+    - use *new* basic runs: --> will do later ... maybe
+        - train new Top, Jvvv skills
+        - resume with *new* Top, Jvvv, GWT, GWR skills
+
+
+
 ==== SCREENS ====
 
 asa1 screen -
@@ -9,10 +26,12 @@ asa1 screen -
 BASIC RUN:
     - GPU both
     - 7step
-    - name Basic_run_M2_13r4d_6coin_7step_300itrs
-    runs/batch/run_for_all_seeds.sh  -N Basic_run_M2_13r4d_6coin_7step_300itrs \
-                                     -f itr_299.pkl
-    runs/tools/check_experiments.sh  -N Basic_run_M2_13r4d_6coin_7step_300itrs  -d data/local/asa-basic-run  -f itr_299.pkl
+    - skill max path length 150
+    - name Basic_run_7step_smpl150_300itrs
+    runs/batch/run_for_all_seeds.sh  -N Basic_run_7step_smpl150_300itrs \
+                                     -f itr_299.pkl \
+                                     -S 16   -X 16
+    runs/tools/check_experiments.sh  -N Basic_run_7step_smpl150_300itrs  -d data/local/asa-basic-run  -f itr_299.pkl
 
 
 RESUME GWTarget:
@@ -40,29 +59,31 @@ RESUME vvv:
     runs/tools/check_experiments.sh  -N From_all--skill_Skill_vvv  -d data/local/asa-resume-with-new-skill
 
 RESUME Jvvv:
-    - GPU 0 (16x)
+    - GPU 1 (25x)
     - policy file (3x)
-    - skill max path length 350
-    - name From_all_smpl350
-    runs/batch/resume_from_ALL.sh  -N From_all_smpl350 \
-                                   -d data/archive/TEST20_Resumed_from_all/Basic_runs \
-                                   -p data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Jvvv_rpos_b20k_mpl800--good_a0.25 \
-                                   -n Skill_Jvvv_rpos_b20k_mpl800 \
+    - skill max path length 150
+    - name From_T20
+    runs/batch/resume_from_ALL.sh  -N From_T20 \
+                                   -d data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Basic_runs \
+                                   -p data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Skill_policies/Skill_Jvvv_b20k_mpl800--good_a0.25 \
+                                   -n Skill_Jvvv_b20k_mpl800 \
                                    -g 10   -i 19   -I 149 \
-                                   -X 16
-    runs/tools/check_experiments.sh  -N From_all_smpl350--skill_Skill_Jvvv_rpos_b20k_mpl800  -d data/local/asa-resume-with-new-skill
+                                   -X 25
+    runs/tools/check_experiments.sh  -N From_T20--skill_Skill_Jvvv_b20k_mpl800  -d data/local/asa-resume-with-new-skill
 
 RESUME Top:
-    - GPU 0 (16x)
+    - GPU both (35x)
     - policy file (3x)
-    - name From_all
-    runs/batch/resume_from_ALL.sh  -N From_all \
-                                   -d data/archive/TEST20_Resumed_from_all/Basic_runs \
-                                   -p data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Top_b20k_mpl800--good_a0.25 \
-                                   -n Skill_Top_b20k_mpl800 \
+    - skill max path length 150
+    - only <0.75 skills
+    - name From_T20
+    runs/batch/resume_from_ALL.sh  -N From_T20 \
+                                   -d data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Basic_runs \
+                                   -p data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.75 \
+                                   -n Skill_Top_T20_sbpt2to4 \
                                    -g 10   -i 19   -I 149 \
-                                   -X 16
-    runs/tools/check_experiments.sh  -N From_all--skill_Skill_Top_b20k_mpl800  -d data/local/asa-resume-with-new-skill
+                                   -X 35
+    runs/tools/check_experiments.sh  -N From_T20--skill_Skill_Top_T20_sbpt2to4  -d data/local/asa-resume-with-new-skill
 
 
 NEW SKILL vvv:
@@ -90,14 +111,14 @@ NEW SKILL Jvvv:
     runs/tools/check_experiments.sh  -N Skill_Jvvv_rpos_b20k_mpl800  -d data/local/asa-train-new-skill
 
 NEW SKILL Top:
-    - GPU 0 (20x)
-    - path length 4-4
+    - GPU 1 (16x)
+    - path length 2-4
     - top skill
     - batch size 20_000
     - max path length 800
-    - name Skill_Top_b20k_mpl800
-    runs/batch/train_new_skills.sh  -d data/archive/TEST20_Resumed_from_all/Basic_runs \
-                                    -n Skill_Top_b20k_mpl800 \
+    - name Skill_Top_T20_sbpt2to4
+    runs/batch/train_new_skills.sh  -d data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Basic_runs \
+                                    -n Skill_Top_T20_sbpt2to4 \
                                     -g 10   -i 19   -I 149 \
-                                    -X 20
-    runs/tools/check_experiments.sh  -N Skill_Top_b20k_mpl800  -d data/local/asa-train-new-skill
+                                    -X 16
+    runs/tools/check_experiments.sh  -N Skill_Top_T20_sbpt2to4  -d data/local/asa-train-new-skill

@@ -61,7 +61,7 @@ new_skill_policy_file = args.skill_policy or \
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
 
 
@@ -188,9 +188,9 @@ def run_task(*_):
                     discount=0.99,
                     force_batch_sampler=True,
                 low_algo_kwargs={
-                    'batch_size': 2500,
-                    'max_path_length': 50,
-                    'n_itr': 500,
+                    'batch_size': 20000,
+                    'max_path_length': 800,
+                    'n_itr': 300,
                     'discount': 0.99,
                 }
         )
@@ -218,9 +218,9 @@ def run_task(*_):
 
 ## Run pickled
 # General experiment settings
-seed = 4                    # Will be ignored if --seed option is used
+seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'Small_newStopFun_smpl150'  # Name of run
+exp_name_extra = 'From_T20_medSkl'  # Name of run
 
 # Skill policy experiment name
 if new_skill_policy_file:

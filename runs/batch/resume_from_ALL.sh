@@ -36,6 +36,7 @@ ignore_skill_files=false
 min_itr_num=0
 max_itr_num=9999
 max_parallel=16
+busy_wait_time=60  # seconds
 while getopts d:p:PN:n:g:i:I:X: option; do
   case "${option}" in
     d) data_dir=${OPTARG}; ;;
@@ -65,9 +66,14 @@ cp /home/h/holas3/garage/sandbox/asa/runs/gridworld/asa_resume_with_new_skill.py
 experiments_dir="/home/h/holas3/garage/data/local/asa-resume-with-new-skill"
 failed_dir="$experiments_dir/../failed/$(basename $experiments_dir)"
 mkdir -p $failed_dir
+echo "Using temporary directory $tmp_dir ."
+echo "Create file named 'STOP' in temporary directory to interrupt this script."
+printf "\n\n"
+
 
 # Launch all trainings
 num_pids=0
+num_launched=0
 
 #for integ_method in $(seq 0 5); do
 for integ_method in 3; do  # DEBUG only use specific integrator (3 = SUBPATH_SKILLS_AVG)
@@ -97,23 +103,40 @@ for integ_method in 3; do  # DEBUG only use specific integrator (3 = SUBPATH_SKI
         continue
       fi
 
-      # Get itr_N.pkl file
-      itr_f="$seed_dir/itr_${itr_i}.pkl"
-      itr_id="itr_${itr_i}"  # "itr_N"
+      # Break if stop file is found
+      if [ -f "$tmp_dir/STOP" ]; then
+        echo "Warning: Interrupting script, stop file was found"
+        break 10
+      fi
 
-      # Wait for batch if we reached max processes
+      # Wait for processes if we reached max processes
       if [ $num_pids -ge $max_parallel ]; then
         sleep 1
         echo "Waiting for processes..."
-        for p in ${back_pids[*]}; do
-          wait $p
+        while [ $num_pids -ge $max_parallel ]; do
+          # Break if stop file is found
+          if [ -f "$tmp_dir/STOP" ]; then
+            echo "Warning: Interrupting script, stop file was found"
+            break 10
+          fi
+          # Wait
+          sleep $busy_wait_time
+          # Check which back_pids are still running
+          old_back_pids=("${back_pids[*]}")
+          unset back_pids
+          num_pids=0
+          for p in ${old_back_pids[*]}; do
+            if ps -p $p > /dev/null; then
+              back_pids[$num_pids]=$p
+              num_pids=$((num_pids+1))
+            fi
+          done
         done
-        unset back_pids
-        num_pids=0
-
-        # Clear all but last snapshot files
-        rm -f $(for exp_dir in $experiments_dir/*; do ls -tr1 $exp_dir/itr* 2>/dev/null | head -n -1; done)
       fi
+
+      # Get itr_N.pkl file
+      itr_f="$seed_dir/itr_${itr_i}.pkl"
+      itr_id="itr_${itr_i}"  # "itr_N"
 
       # Get current skill policy file
       if $ignore_skill_files; then
@@ -146,9 +169,10 @@ for integ_method in 3; do  # DEBUG only use specific integrator (3 = SUBPATH_SKI
       fi
 
       # Launch another training in batch
+      num_launched=$((num_launched+1))
       (
         out="${tmp_dir}/integ${integ_method}_${itr_id}_s${seed}_out.txt"
-        printf "%s    Launching training with integrator %s, seed %s, resumed after %s, with skill %s\n" "$(date +'%x %T')" $integ_method $seed $itr_id "$(basename $skill_policy_dir)"
+        printf "%s    Launching %s-th training: integrator %s, seed %s, resumed after %s, with skill %s\n" "$(date +'%x %T')" $num_launched $integ_method $seed $itr_id "$(basename $skill_policy_dir)"
         # Run
         $script --file $itr_f --skill-policy $skill_policy_file --integration-method $integ_method --seed $seed &> $out  # && rm $out
         printf "%s    Training with integrator %s, seed %s, resumed after %s finished\n" "$(date +'%x %T')" $integ_method $seed $itr_id
@@ -161,7 +185,7 @@ done
 
 # Wait for last batch
 sleep 1
-echo "Waiting for processes..."
+echo "Waiting for last processes..."
 for p in ${back_pids[*]}; do
   wait $p
 done

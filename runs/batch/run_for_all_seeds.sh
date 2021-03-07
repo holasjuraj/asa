@@ -1,25 +1,28 @@
 #!/bin/bash
 # Launch asa_basic_run.py for all seeds.
 
-max_seed=16
 usage="
-Usage: $(basename $0) [-N <exp_name> [-f <final_file>]] [-X max_parallel]
+Usage: $(basename $0) [-N <exp_name> [-f <final_file>]] [-S num_seeds] [-X max_parallel]
 Launch asa_basic_run.py for all seeds
 
 Options:
   -N exp_name      (part of) experiment name, used to check for failed runs
   -f final_file    name of final file marking successful run. Default = final.pkl
-  -X max_parallel          maximal number of parallel runs. Default = 16
+  -S num_seeds     number of seeds to run. Default = 16
+  -X max_parallel  maximal number of parallel runs. Default = 16
 "
 
 # Check arguments
-exp_name="NOTHING"
+exp_name="noname"
 final_file="final.pkl"
+num_seeds=16
 max_parallel=16
-while getopts N:f:X: option; do
+busy_wait_time=60  # seconds
+while getopts N:f:S:X: option; do
   case "${option}" in
     N) exp_name=${OPTARG}; ;;
     f) final_file=${OPTARG}; ;;
+    S) num_seeds=${OPTARG}; ;;
     X) max_parallel=${OPTARG}; ;;
     *) echo "$usage" ; exit 1; ;;
   esac
@@ -33,19 +36,42 @@ cp /home/h/holas3/garage/sandbox/asa/runs/gridworld/asa_basic_run.py $script
 experiments_dir="/home/h/holas3/garage/data/local/asa-basic-run"
 failed_dir="$experiments_dir/../failed/$(basename $experiments_dir)"
 mkdir -p $failed_dir
+echo "Using temporary directory $tmp_dir ."
+echo "Create file named 'STOP' in temporary directory to interrupt this script."
+printf "\n\n"
 
 # Launch all trainings
 num_pids=0
-for seed in $(seq 1 $max_seed); do
-  # Wait for batch if we reached max processes
+for seed in $(seq 1 $num_seeds); do
+  # Break if stop file is found
+  if [ -f "$tmp_dir/STOP" ]; then
+    echo "Warning: Interrupting script, stop file was found"
+    break 10
+  fi
+
+  # Wait for processes if we reached max processes
   if [ $num_pids -ge $max_parallel ]; then
     sleep 1
     echo "Waiting for processes..."
-    for p in ${back_pids[*]}; do
-      wait $p
+    while [ $num_pids -ge $max_parallel ]; do
+      # Break if stop file is found
+      if [ -f "$tmp_dir/STOP" ]; then
+        echo "Warning: Interrupting script, stop file was found"
+        break 10
+      fi
+      # Wait
+      sleep $busy_wait_time
+      # Check which back_pids are still running
+      old_back_pids=("${back_pids[*]}")
+      unset back_pids
+      num_pids=0
+      for p in ${old_back_pids[*]}; do
+        if ps -p $p > /dev/null; then
+          back_pids[$num_pids]=$p
+          num_pids=$((num_pids+1))
+        fi
+      done
     done
-    unset back_pids
-    num_pids=0
   fi
 
   # Check whether this run was already executed
@@ -75,7 +101,7 @@ done
 
 # Wait for last batch
 sleep 1
-echo "Waiting for processes..."
+echo "Waiting for last processes..."
 for p in ${back_pids[*]}; do
   wait $p
 done

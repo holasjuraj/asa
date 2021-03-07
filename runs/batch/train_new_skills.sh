@@ -27,6 +27,7 @@ skill_name=""
 min_itr_num=0
 max_itr_num=9999
 max_parallel=16
+busy_wait_time=10  # seconds
 while getopts d:p:n:g:i:I:X: option; do
   case "${option}" in
     d) data_dir=${OPTARG}; ;;
@@ -53,9 +54,13 @@ cp /home/h/holas3/garage/sandbox/asa/runs/gridworld/asa_train_new_skill.py $scri
 experiments_dir="/home/h/holas3/garage/data/local/asa-train-new-skill"
 failed_dir="$experiments_dir/../failed/$(basename $experiments_dir)"
 mkdir -p $failed_dir
+echo "Using temporary directory $tmp_dir ."
+echo "Create file named 'STOP' in temporary directory to interrupt this script."
+printf "\n\n"
 
 # Launch all trainings
 num_pids=0
+num_launched=0
 
 for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
   seed=`echo "$seed_dir" | sed -n "s/^.*--s\([0-9]\+\).*$/\1/p"`
@@ -77,20 +82,40 @@ for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
       continue
     fi
 
-    # Get itr_N.pkl file
-    itr_f="$seed_dir/itr_${itr_i}.pkl"
-    itr_id="itr_${itr_i}"  # "itr_N"
+    # Break if stop file is found
+    if [ -f "$tmp_dir/STOP" ]; then
+      echo "Warning: Interrupting script, stop file was found"
+      break 10
+    fi
 
-    # Wait for batch if we reached max processes
+    # Wait for processes if we reached max processes
     if [ $num_pids -ge $max_parallel ]; then
       sleep 1
       echo "Waiting for processes..."
-      for p in ${back_pids[*]}; do
-        wait $p
+      while [ $num_pids -ge $max_parallel ]; do
+        # Break if stop file is found
+        if [ -f "$tmp_dir/STOP" ]; then
+          echo "Warning: Interrupting script, stop file was found"
+          break 10
+        fi
+        # Wait
+        sleep $busy_wait_time
+        # Check which back_pids are still running
+        old_back_pids=("${back_pids[*]}")
+        unset back_pids
+        num_pids=0
+        for p in ${old_back_pids[*]}; do
+          if ps -p $p > /dev/null; then
+            back_pids[$num_pids]=$p
+            num_pids=$((num_pids+1))
+          fi
+        done
       done
-      unset back_pids
-      num_pids=0
     fi
+
+    # Get itr_N.pkl file
+    itr_f="$seed_dir/itr_${itr_i}.pkl"
+    itr_id="itr_${itr_i}"  # "itr_N"
 
     # Check whether this run was already executed
     itr_id=$(basename $itr_f .pkl)  # "itr_N"
@@ -107,9 +132,10 @@ for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
     fi
 
     # Launch another training in batch
+    num_launched=$((num_launched+1))
     (
       out="${tmp_dir}/${itr_id}_s${seed}_out.txt"
-      printf "%s    Launching new skill training from seed %s, %s\n" "$(date +'%x %T')" $seed $itr_id
+      printf "%s    Launching %s-th new skill training: seed %s, %s\n" "$(date +'%x %T')" $num_launched $seed $itr_id
       # Run
       $script --file $itr_f --seed $seed &> $out  # && rm $out
       printf "%s    Training from seed %s, %s finished\n" "$(date +'%x %T')" $seed $itr_id
@@ -121,7 +147,7 @@ done
 
 # Wait for last batch
 sleep 1
-echo "Waiting for processes..."
+echo "Waiting for last processes..."
 for p in ${back_pids[*]}; do
   wait $p
 done

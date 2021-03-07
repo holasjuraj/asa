@@ -11,8 +11,9 @@ from pandas.errors import EmptyDataError
 
 # Define input/output
 data_dir         = '/home/h/holas3/garage/data/local/asa-train-new-skill'
-successful_dir   = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Jvvv_rpos_b20k_mpl800--good_a0.25'
-unsuccessful_dir = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Jvvv_rpos_b20k_mpl800--bad_a0.25'
+data_dir   = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.75'
+successful_dir   = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.25--bad_a0.75'
+unsuccessful_dir = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Skill_policies/Skill_Top_T20_sbpt2to4--bad_a0.25'
 dry_run          = True  # do not actually move folders
 
 # Define sorting preferences
