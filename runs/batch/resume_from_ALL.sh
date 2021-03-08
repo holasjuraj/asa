@@ -172,10 +172,10 @@ for integ_method in 3; do  # DEBUG only use specific integrator (3 = SUBPATH_SKI
       num_launched=$((num_launched+1))
       (
         out="${tmp_dir}/integ${integ_method}_${itr_id}_s${seed}_out.txt"
-        printf "%s    Launching %s-th training: integrator %s, seed %s, resumed after %s, with skill %s\n" "$(date +'%x %T')" $num_launched $integ_method $seed $itr_id "$(basename $skill_policy_dir)"
+        printf "%s    Launching %s-th training: integrator %s, seed %s, resumed after %s, with skill %s\n" "$(date +'%F %T')" $num_launched $integ_method $seed $itr_id "$(basename $skill_policy_dir)"
         # Run
         $script --file $itr_f --skill-policy $skill_policy_file --integration-method $integ_method --seed $seed &> $out  # && rm $out
-        printf "%s    Training with integrator %s, seed %s, resumed after %s finished\n" "$(date +'%x %T')" $integ_method $seed $itr_id
+        printf "%s    Training with integrator %s, seed %s, resumed after %s finished\n" "$(date +'%F %T')" $integ_method $seed $itr_id
       ) &
       back_pids[$num_pids]=$!
       num_pids=$((num_pids+1))

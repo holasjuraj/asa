@@ -60,7 +60,7 @@ def run_task(*_):
     ]
     trained_skill_policies = \
             [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
-            [GridworldStepPolicy(env_spec=base_env.spec, direction=d, N=7) for d in range(4)]
+            [GridworldStepPolicy(env_spec=base_env.spec, direction=d, n=7) for d in range(4)]
     trained_skill_policies_stop_funcs = \
             [pol.skill_stopping_func for pol in trained_skill_policies]
     skill_policy_prototype = CategoricalMLPPolicy(

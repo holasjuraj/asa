@@ -135,10 +135,10 @@ for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
     num_launched=$((num_launched+1))
     (
       out="${tmp_dir}/${itr_id}_s${seed}_out.txt"
-      printf "%s    Launching %s-th new skill training: seed %s, %s\n" "$(date +'%x %T')" $num_launched $seed $itr_id
+      printf "%s    Launching %s-th new skill training: seed %s, %s\n" "$(date +'%F %T')" $num_launched $seed $itr_id
       # Run
       $script --file $itr_f --seed $seed &> $out  # && rm $out
-      printf "%s    Training from seed %s, %s finished\n" "$(date +'%x %T')" $seed $itr_id
+      printf "%s    Training from seed %s, %s finished\n" "$(date +'%F %T')" $seed $itr_id
     ) &
     back_pids[$num_pids]=$!
     num_pids=$((num_pids+1))

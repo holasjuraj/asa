@@ -68,11 +68,11 @@ class GridworldStepPolicy(Policy, Serializable):
     """
     Policy with fixed behaviour of moving one tile in desired direction.
     """
-    def __init__(self, env_spec, direction, N=1):
+    def __init__(self, env_spec, direction, n=1):
         """
         :param direction: 0-3 or 'up' / 'right' / 'down' / 'left'
         """
-        self.N = N
+        self.n = n
         if isinstance(direction, int):
             self.direction = direction
         else:
@@ -87,6 +87,26 @@ class GridworldStepPolicy(Policy, Serializable):
         return []
 
     def skill_stopping_func(self, path):
-        # DEBUG: Nstep tests - atomic action is performed N times
-        return len(path['actions']) >= self.N
-        # return True
+        return len(path['actions']) >= self.n
+
+
+
+class GridworldRandomPolicy(Policy, Serializable):
+    """
+    Policy which moves in random direction.
+    """
+    def __init__(self, env_spec, n=1):
+        self.n = n
+        Serializable.quick_init(self, locals())
+        super().__init__(env_spec=env_spec)
+
+    def get_action(self, observation):
+        return np.random.randint(4), dict()
+
+    def get_params_internal(self, **tags):
+        return []
+
+    def skill_stopping_func(self, path):
+        # Random action is performed N times
+        return len(path['actions']) >= self.n
+

@@ -10,7 +10,7 @@ import numpy as np
 from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
 from sandbox.asa.policies import HierarchicalPolicy
-from sandbox.asa.policies import GridworldTargetPolicy, GridworldStepPolicy
+from sandbox.asa.policies import GridworldTargetPolicy, GridworldStepPolicy, GridworldRandomPolicy
 from sandbox.asa.policies import CategoricalMLPSkillIntegrator
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
@@ -45,24 +45,24 @@ new_skill_policy_file = args.skill_policy or \
                 '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Jvvv_rpos_b20k_mpl800--good_a0.25/2021_02_17-22_01--after_itr_79--Skill_Jvvv_rpos_b20k_mpl800--s4/final.pkl'
                 # DEBUG For direct runs: path to file with new skill policy
 
-# # DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
-# new_skill_policy_file = None
+# DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
+new_skill_policy_file = None
 # skill_policy_exp_name = 'GWTarget'
-# # skill_policy_exp_name = 'GWRandom'
-# new_skill_subpath = {
-#     'actions': [15, 15, 15],
-#     'start_observations': np.array([[21, 47,  1,  0, 0, 1, 0, 0, 1],  # in region I, holding coin, some coins picked
-#                                     [21, 47,  1,  0, 1, 1, 0, 1, 1],
-#                                     [21, 47,  1,  1, 1, 1, 1, 1, 1],
-#                                    ])
-# }
-# # /DEBUG
+skill_policy_exp_name = 'GWRandom_25'
+new_skill_subpath = {
+    'actions': [15, 15, 15],
+    'start_observations': np.array([[21, 47,  1,  0, 0, 1, 0, 0, 1],  # in region I, holding coin, some coins picked
+                                    [21, 47,  1,  0, 1, 1, 0, 1, 1],
+                                    [21, 47,  1,  1, 1, 1, 1, 1, 1],
+                                   ])
+}
+# /DEBUG
 
 
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
 
 
 
@@ -96,19 +96,18 @@ def run_task(*_):
             (37,  5), (37, 18), (37, 33),
         ]
         trained_skill_policies = \
-                [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
-                [GridworldStepPolicy(env_spec=base_env.spec, direction=d, N=7) for d in range(4)] + \
-                [
-                 new_skill_policy
-                 # GridworldTargetPolicy(env_spec=base_env.spec, target=(43, 54))    # DEBUG use GridworldTargetPolicy as new skill
-                 # GridworldStepPolicy(env_spec=base_env.spec, direction='down', N=7*3)    # DEBUG use GridworldTargetPolicy as new skill
-                 # GridworldRandomPolicy(env_spec=base_env.spec)                     # DEBUG use GridworldRandomPolicy as new skill
-                ]
+            [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
+            [GridworldStepPolicy(env_spec=base_env.spec, direction=d, n=7) for d in range(4)] + \
+            [
+             # new_skill_policy
+             # GridworldTargetPolicy(env_spec=base_env.spec, target=(43, 54))  # DEBUG use GridworldTargetPolicy as new skill
+             GridworldRandomPolicy(env_spec=base_env.spec, n=25)             # DEBUG use GridworldRandomPolicy as new skill
+            ]
         trained_skill_policies_stop_funcs = \
                 [pol.skill_stopping_func for pol in trained_skill_policies[:-1]] + \
                 [
-                 new_skill_stop_func
-                 # trained_skill_policies[-1].skill_stopping_func                    # DEBUG use Gridworld*Policy as new skill
+                 # new_skill_stop_func
+                 trained_skill_policies[-1].skill_stopping_func                  # DEBUG use Gridworld*Policy as new skill
                 ]
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 
@@ -220,7 +219,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'From_T20_medSkl'  # Name of run
+exp_name_extra = 'From_all'  # Name of run
 
 # Skill policy experiment name
 if new_skill_policy_file:

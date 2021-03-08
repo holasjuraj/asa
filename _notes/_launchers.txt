@@ -46,6 +46,19 @@ RESUME GWTarget:
                                    -X 32
     runs/tools/check_experiments.sh  -N From_all--skill_GWTarget  -d data/local/asa-resume-with-new-skill
 
+RESUME GWRandom:
+    - GPU both (35x)
+    - GWRandom_25 (3x)
+    - skill max path length 150
+    - name From_all
+    runs/batch/resume_from_ALL.sh  -N From_all \
+                                   -d data/archive/TEST20_Resumed_from_all/Basic_runs \
+                                   -P \
+                                   -n GWRandom_25 \
+                                   -g 10   -i 19   -I 149 \
+                                   -X 35
+    runs/tools/check_experiments.sh  -N From_all--skill_GWRandom_25  -d data/local/asa-resume-with-new-skill
+
 RESUME vvv:
     - GPU 0 (16x)
     - policy file (3x)
