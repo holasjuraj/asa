@@ -8,7 +8,12 @@
 
 ==== SCREENS ====
 
-asa1 screen -
+asa1 screen - BASIC SKILLS:
+    - GPU 0 (16x)
+    - skill IDs 0-13
+    - name Skill_Basic
+    runs/batch/train_basic_skills.sh  -n Skill_Basic  -X 16
+    runs/tools/check_experiments.sh  -N Skill_Basic  -d data/local/asa-train-basic-skill
 
 
 

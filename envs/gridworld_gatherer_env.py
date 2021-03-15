@@ -255,14 +255,6 @@ class GridworldGathererEnv(AsaEnv, Serializable):
         """
         obs = np.asarray(np.round(start_obs), dtype='int32')
         self.agent_pos = obs[:2]
-        # # DEBUG initialize at random position
-        # while True:
-        #     pos = (np.random.randint(self.n_row), np.random.randint(self.n_col))
-        #     if self.map[pos[0], pos[1]] in ['F', 'S'] \
-        #             and (pos[0] < 30 or pos[1] < 41):
-        #         break
-        # self.agent_pos = np.array(pos)
-        # # /DEBUG
         self.coin_holding = obs[2] > 0.5
         self.coins_picked = obs[3:] > 0.5
         return self.get_current_obs()
@@ -446,3 +438,81 @@ class GridworldGathererEnv(AsaEnv, Serializable):
         if opts.get('live', False):
             plt.gcf().canvas.draw()
             plt.waitforbuttonpress(timeout=0.001)
+
+
+
+class GridworldTargetEnv(GridworldGathererEnv):
+    """
+    Gridworld environment, in which the goal is to reach target position.
+    """
+    def __init__(self, target, plot=None):
+        """
+        :param plot: which plots to generate. Only 'visitation' plot is supported now.
+                {'visitation': <opts>}
+                where opts = {'save': <directory or False>, 'live': <boolean> [, 'alpha': <0..1>][, 'noise': <0..1>]}
+        """
+        # Normalize char map
+        m = np.array([list(row.upper()) for row in self.MAP])
+        m[np.logical_or(m == '.', m == ' ')] = 'F'
+        m[np.logical_or(m == 'X', m == '#')] = 'W'
+        m[m == 'O'] = 'H'
+        self.map = m
+        self.n_row, self.n_col = self.map.shape
+
+        # Set state
+        self.target = np.array(target)
+        self.coins_pos = np.argwhere(self.map == 'C')
+        self.coins_num = self.coins_pos.shape[0]
+        self.coins_picked = np.array([False] * self.coins_num)
+        self.coin_holding = False
+        self.agent_pos = None
+
+        # Plotting
+        self.visitation_plot_num = 0
+        if (plot is None) or (plot is False):
+            self.plot_opts = {}
+        else:
+            self.plot_opts = plot
+        for plot_type in ['visitation']:
+            if plot_type not in self.plot_opts  or  not isinstance(self.plot_opts[plot_type], dict):
+                self.plot_opts[plot_type] = {}
+        if any([plot_type_opts.get('live', False) for plot_type_opts in self.plot_opts.values()]):
+            plt.ion()
+
+        # Always call Serializable constructor last
+        Serializable.quick_init(self, locals())
+
+    def reset(self):
+        """
+        Initialize the agent positioned randomly in the map.
+        """
+        starts = np.argwhere(np.logical_or(self.map == 'F', self.map == 'S'))
+        n_starts = starts.shape[0]
+        self.agent_pos = starts[np.random.randint(n_starts)]
+        self.coins_picked = np.random.rand(self.coins_num) > 0.5
+        self.coin_holding = True if np.all(self.coins_picked) \
+                            else False if not np.any(self.coins_picked) \
+                            else np.random.rand() > 0.5
+        return self.get_current_obs()
+
+    def step(self, action):
+        """
+        Reward and terminate if agent reached target position. If not, reward
+        is proportional to parallelism of agents step to target-agent vector.
+        """
+        prev_pos = self.agent_pos
+        obs, reward, done, info = super(GridworldTargetEnv, self).step(action)
+        d_agent  = self.agent_pos - prev_pos
+        d_target = self.target - prev_pos
+        reward = (d_agent/np.linalg.norm(d_agent)) @ (d_target/np.linalg.norm(d_target))
+        if np.isnan(reward):
+            reward = 0
+        reward /= 100
+        if np.array_equal(self.agent_pos, self.target):
+            reward = 1
+            done = True
+        return Step(observation=obs,
+                    reward=reward,
+                    done=done,
+                    **info
+                   )
