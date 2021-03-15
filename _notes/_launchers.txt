@@ -1,17 +1,8 @@
 ==== PLAN ====
-+ decide parameters affecting training time - itrs = 300 (for start), smpl = 150
-+ train new basic runs
-    + are more of them successful? --> more or less equal
-    + do they yield good frequent subpaths of length 4 | <=4? --> not quite, T20 Basic runs seem better
-- do some of following:
-    - reuse *old* basic runs: --> will do now
-        + train new Top skill (sbpt2to4) from *old* basic runs
-        + no need to train new Jvvv skill
-        - resume with *old* Jvvv (+), GWR skills, and new Top skill (+)
-        + no need to resume from GWT skill
-    - use *new* basic runs: --> will do later ... maybe
-        - train new Top, Jvvv skills
-        - resume with *new* Top, Jvvv, GWT, GWR skills
+- create trained "basic" skills for all rooms
+- create new Basic_runs with trained skills
+- train new skills: Top, Jvvv (?)
+- resume with skills Top, Jvvv (?), Basic, GWR/GWS
 
 
 
@@ -58,6 +49,19 @@ RESUME GWRandom:
                                    -g 10   -i 19   -I 149 \
                                    -X 35
     runs/tools/check_experiments.sh  -N From_all--skill_GWRandom_25  -d data/local/asa-resume-with-new-skill
+
+RESUME GWStay:
+    - GPU both (35x)
+    - GWStay_25 (3x)
+    - skill max path length 150
+    - name From_all
+    runs/batch/resume_from_ALL.sh  -N From_all \
+                                   -d data/archive/TEST20_Resumed_from_all/Basic_runs \
+                                   -P \
+                                   -n GWStay_25 \
+                                   -g 10   -i 19   -I 149 \
+                                   -X 35
+    runs/tools/check_experiments.sh  -N From_all--skill_GWStay_25  -d data/local/asa-resume-with-new-skill
 
 RESUME vvv:
     - GPU 0 (16x)

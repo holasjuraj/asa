@@ -110,3 +110,25 @@ class GridworldRandomPolicy(Policy, Serializable):
         # Random action is performed N times
         return len(path['actions']) >= self.n
 
+
+
+class GridworldStayPolicy(Policy, Serializable):
+    """
+    Policy which stays at the same place - only alternating steps up and
+    down to make some valid moves.
+    """
+    def __init__(self, env_spec, n=1):
+        self.n = n
+        Serializable.quick_init(self, locals())
+        super().__init__(env_spec=env_spec)
+
+    def get_action(self, observation):
+        row, _ = np.asarray(observation[:2], dtype='int32')
+        return 2 * (row % 2), dict()
+
+    def get_params_internal(self, **tags):
+        return []
+
+    def skill_stopping_func(self, path):
+        # Action is performed N times
+        return len(path['actions']) >= self.n

@@ -10,7 +10,7 @@ import numpy as np
 from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
 from sandbox.asa.policies import HierarchicalPolicy
-from sandbox.asa.policies import GridworldTargetPolicy, GridworldStepPolicy, GridworldRandomPolicy
+from sandbox.asa.policies import GridworldTargetPolicy, GridworldStepPolicy, GridworldRandomPolicy, GridworldStayPolicy
 from sandbox.asa.policies import CategoricalMLPSkillIntegrator
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
@@ -48,7 +48,8 @@ new_skill_policy_file = args.skill_policy or \
 # DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
 new_skill_policy_file = None
 # skill_policy_exp_name = 'GWTarget'
-skill_policy_exp_name = 'GWRandom_25'
+# skill_policy_exp_name = 'GWRandom_25'
+skill_policy_exp_name = 'GWStay_25'
 new_skill_subpath = {
     'actions': [15, 15, 15],
     'start_observations': np.array([[21, 47,  1,  0, 0, 1, 0, 0, 1],  # in region I, holding coin, some coins picked
@@ -101,7 +102,8 @@ def run_task(*_):
             [
              # new_skill_policy
              # GridworldTargetPolicy(env_spec=base_env.spec, target=(43, 54))  # DEBUG use GridworldTargetPolicy as new skill
-             GridworldRandomPolicy(env_spec=base_env.spec, n=25)             # DEBUG use GridworldRandomPolicy as new skill
+             # GridworldRandomPolicy(env_spec=base_env.spec, n=25)             # DEBUG use GridworldRandomPolicy as new skill
+             GridworldStayPolicy(env_spec=base_env.spec, n=25)             # DEBUG use GridworldStayPolicy as new skill
             ]
         trained_skill_policies_stop_funcs = \
                 [pol.skill_stopping_func for pol in trained_skill_policies[:-1]] + \
