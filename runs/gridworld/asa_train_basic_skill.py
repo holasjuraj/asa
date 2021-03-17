@@ -92,13 +92,13 @@ def run_task(*_):
         # Train RL agent
         algo.train(sess=session)
 
-    ## Save new policy
-    out_file = os.path.join(logger.get_snapshot_dir(), 'final.pkl')
-    with open(out_file, 'wb') as file:
-        out_data = {
-                'policy': policy
-        }
-        dill.dump(out_data, file)
+        ## Save new policy
+        out_file = os.path.join(logger.get_snapshot_dir(), 'final.pkl')
+        with open(out_file, 'wb') as file:
+            out_data = {
+                    'policy': policy
+            }
+            dill.dump(out_data, file)
 
 
 ## Run directly

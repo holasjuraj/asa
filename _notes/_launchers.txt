@@ -1,6 +1,6 @@
 ==== PLAN ====
-- create trained "basic" skills for all rooms
-- create new Basic_runs with trained skills
++ create trained "basic" skills for all rooms
++ create new Basic_runs with trained skills
 - train new skills: Top, Jvvv (?)
 - resume with skills Top, Jvvv (?), Basic, GWR/GWS
 
@@ -8,26 +8,19 @@
 
 ==== SCREENS ====
 
-asa1 screen - BASIC SKILLS:
-    - GPU 0 (16x)
-    - skill IDs 0-13
-    - name Skill_Basic
-    runs/batch/train_basic_skills.sh  -n Skill_Basic  -X 16
-    runs/tools/check_experiments.sh  -N Skill_Basic  -d data/local/asa-train-basic-skill
+asa1 screen -
 
 
 
 ==== INACTIVE ====
 
 BASIC RUN:
-    - GPU both
-    - 7step
-    - skill max path length 150
-    - name Basic_run_7step_smpl150_300itrs
-    runs/batch/run_for_all_seeds.sh  -N Basic_run_7step_smpl150_300itrs \
+    - GPU 0 (8x)
+    - name Basic_run
+    runs/batch/run_for_all_seeds.sh  -N Basic_run \
                                      -f itr_299.pkl \
-                                     -S 16   -X 16
-    runs/tools/check_experiments.sh  -N Basic_run_7step_smpl150_300itrs  -d data/local/asa-basic-run  -f itr_299.pkl
+                                     -S 16   -X 8
+    runs/tools/check_experiments.sh  -N Basic_run  -d data/local/asa-basic-run  -f itr_299.pkl
 
 
 RESUME GWTarget:
@@ -106,6 +99,14 @@ RESUME Top:
                                    -g 10   -i 19   -I 149 \
                                    -X 35
     runs/tools/check_experiments.sh  -N From_T20--skill_Skill_Top_T20_sbpt2to4  -d data/local/asa-resume-with-new-skill
+
+
+BASIC SKILLS:
+    - GPU 0 (16x)
+    - skill IDs 0-13
+    - name Skill_Basic
+    runs/batch/train_basic_skills.sh  -n Skill_Basic  -X 16
+    runs/tools/check_experiments.sh  -N Skill_Basic  -d data/local/asa-train-basic-skill
 
 
 NEW SKILL vvv:
