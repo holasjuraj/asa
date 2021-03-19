@@ -42,31 +42,31 @@ snapshot_file = args.file or \
                 # DEBUG For direct runs: path to snapshot file (itr_N.pkl) to start from
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 new_skill_policy_file = args.skill_policy or \
-                '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Jvvv_rpos_b20k_mpl800--good_a0.25/2021_02_17-22_01--after_itr_79--Skill_Jvvv_rpos_b20k_mpl800--s4/final.pkl'
+                '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.75/2021_02_25-22_55--after_itr_79--Skill_Top_T20_sbpt2to4--s4/final.pkl'
                 # DEBUG For direct runs: path to file with new skill policy
 
-# DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
-new_skill_policy_file = None
-# skill_policy_exp_name = 'GWTarget'
-# skill_policy_exp_name = 'GWRandom_25'
-skill_policy_exp_name = 'GWStay_25'
-new_skill_subpath = {
-    'actions': [15, 15, 15],
-    'start_observations': np.array([[21, 47,  1,  0, 0, 1, 0, 0, 1],  # in region I, holding coin, some coins picked
-                                    [21, 47,  1,  0, 1, 1, 0, 1, 1],
-                                    [21, 47,  1,  1, 1, 1, 1, 1, 1],
-                                   ])
-}
-# /DEBUG
+# # DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
+# new_skill_policy_file = None
+# # skill_policy_exp_name = 'GWTarget'
+# # skill_policy_exp_name = 'GWRandom_25'
+# skill_policy_exp_name = 'GWStay_25'
+# new_skill_subpath = {
+#     'actions': [15, 15, 15],
+#     'start_observations': np.array([[21, 47,  1,  0, 0, 1, 0, 0, 1],  # in region I, holding coin, some coins picked
+#                                     [21, 47,  1,  0, 1, 1, 0, 1, 1],
+#                                     [21, 47,  1,  1, 1, 1, 1, 1, 1],
+#                                    ])
+# }
+# # /DEBUG
 
-
+basic_skills_dir = '/home/h/holas3/garage/data/archive/TEST21_Resumed_all_Basic_skills/Basic_skills'
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
 
 
-
+# noinspection PyTypeChecker
 def run_task(*_):
     # Configure TF session
     config = tf.ConfigProto()
@@ -91,27 +91,44 @@ def run_task(*_):
         base_env = saved_data['env'].env.env  # <NormalizedEnv<MinibotEnv instance>>
 
         # Skill policies, operating in base environment
-        skill_targets = [  # 13 basic room regions
+        # 1) Basic skill policies
+        skill_targets = [  # 13 basic room regions + target
             ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
             (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
             (37,  5), (37, 18), (37, 33),
+            (43, 54)
         ]
-        trained_skill_policies = \
-            [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
-            [GridworldStepPolicy(env_spec=base_env.spec, direction=d, n=7) for d in range(4)] + \
-            [
-             # new_skill_policy
-             # GridworldTargetPolicy(env_spec=base_env.spec, target=(43, 54))  # DEBUG use GridworldTargetPolicy as new skill
-             # GridworldRandomPolicy(env_spec=base_env.spec, n=25)             # DEBUG use GridworldRandomPolicy as new skill
-             GridworldStayPolicy(env_spec=base_env.spec, n=25)             # DEBUG use GridworldStayPolicy as new skill
-            ]
-        trained_skill_policies_stop_funcs = \
-                [pol.skill_stopping_func for pol in trained_skill_policies[:-1]] + \
-                [
-                 # new_skill_stop_func
-                 trained_skill_policies[-1].skill_stopping_func                  # DEBUG use Gridworld*Policy as new skill
-                ]
+        basic_skill_policies = [None] * 13
+        basic_skill_policies_stop_funcs = [None] * 13
+        for skill_dir in os.listdir(basic_skills_dir):
+            skill_id = int(skill_dir[skill_dir.find('--trg') + 5:])
+            basic_skill_file = os.path.join(basic_skills_dir, skill_dir, 'final.pkl')
+            with open(basic_skill_file, 'rb') as file:
+                basic_skill_data = dill.load(file)
+            basic_skill_policy = basic_skill_data['policy']
+            basic_skill_stop_func = \
+                GridworldTargetPolicy(env_spec=base_env.spec, target=skill_targets[skill_id])\
+                .skill_stopping_func
+            if skill_id < 13:
+                basic_skill_policies[skill_id] = basic_skill_policy
+                basic_skill_policies_stop_funcs[skill_id] = basic_skill_stop_func
+            else:
+                basic_target_skill_policy = basic_skill_policy
+                basic_target_skill_stop_func = basic_skill_stop_func
+        # 2) Step policies
+        step_policies = [GridworldStepPolicy(env_spec=base_env.spec, direction=d, n=7) for d in range(4)]
+        step_policies_stop_funcs = [pol.skill_stopping_func for pol in step_policies]
+        # 3) New skill policy
+        # new_skill_policy    = basic_target_skill_policy     # DEBUG use trained Basic target policy as new skill
+        # new_skill_stop_func = basic_target_skill_stop_func  # DEBUG use trained Basic target policy as new skill
+        # new_skill_policy    = GridworldRandomPolicy(env_spec=base_env.spec, n=25)   # DEBUG use GridworldRandomPolicy as new skill
+        # new_skill_stop_func = new_skill_policy.skill_stopping_func                  # DEBUG use GridworldRandomPolicy as new skill
+        # 4) Put all skills together
+        trained_skill_policies = basic_skill_policies + step_policies + [new_skill_policy]
+        trained_skill_policies_stop_funcs = basic_skill_policies_stop_funcs + step_policies_stop_funcs + [new_skill_stop_func]
+
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
+
 
         ## Upper level environment & policies
         # Hierarchized environment

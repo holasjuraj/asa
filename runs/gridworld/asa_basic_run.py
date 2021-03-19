@@ -32,7 +32,7 @@ args = parser.parse_args()
 basic_skills_dir = '/home/h/holas3/garage/data/archive/TEST21_Resumed_all_Basic_skills/Basic_skills'
 
 ## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 # os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
 
 
@@ -58,25 +58,30 @@ def run_task(*_):
         tf_base_env = TfEnv(base_env)
 
         # Skill policies, operating in base environment
-        skill_targets = [
-            # 13 basic room regions + target
+        # 1) Basic skill policies
+        skill_targets = [  # 13 basic room regions
             ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
             (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
-            (37,  5), (37, 18), (37, 33),
-            (43, 54)
+            (37,  5), (37, 18), (37, 33)
         ]
-        trained_skill_policies = [None] * 13
-        trained_skill_policies_stop_funcs = [None] * 13
+        basic_skill_policies = [None] * 13
+        basic_skill_policies_stop_funcs = [None] * 13
         for skill_dir in os.listdir(basic_skills_dir):
             skill_id = int(skill_dir[skill_dir.find('--trg') + 5:])
             if skill_id >= 13: continue  # do not include target skill
-            skill_file = os.path.join(basic_skills_dir, skill_dir, 'final.pkl')
-            with open(skill_file, 'rb') as file:
-                saved_data = dill.load(file)
-            trained_skill_policies[skill_id] = saved_data['policy']
-            trained_skill_policies_stop_funcs[skill_id] = \
+            basic_skill_file = os.path.join(basic_skills_dir, skill_dir, 'final.pkl')
+            with open(basic_skill_file, 'rb') as file:
+                basic_skill_data = dill.load(file)
+            basic_skill_policies[skill_id] = basic_skill_data['policy']
+            basic_skill_policies_stop_funcs[skill_id] = \
                 GridworldTargetPolicy(env_spec=base_env.spec, target=skill_targets[skill_id])\
                 .skill_stopping_func
+        # 2) Step policies
+        step_policies = [GridworldStepPolicy(env_spec=base_env.spec, direction=d, n=7) for d in range(4)]
+        step_policies_stop_funcs = [pol.skill_stopping_func for pol in step_policies]
+        # 3) Put all skills together
+        trained_skill_policies = basic_skill_policies + step_policies
+        trained_skill_policies_stop_funcs = basic_skill_policies_stop_funcs + step_policies_stop_funcs
 
         skill_policy_prototype = CategoricalMLPPolicy(
                 env_spec=tf_base_env.spec,

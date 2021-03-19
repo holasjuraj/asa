@@ -1,8 +1,9 @@
 ==== PLAN ====
 + create trained "basic" skills for all rooms
 + create new Basic_runs with trained skills
+- examine subpaths
 - train new skills: Top, Jvvv (?)
-- resume with skills Top, Jvvv (?), Basic, GWR/GWS
+- resume with skills Top, Jvvv (?), Basic_target, GWR/GWS
 
 
 
@@ -15,11 +16,11 @@ asa1 screen -
 ==== INACTIVE ====
 
 BASIC RUN:
-    - GPU 0 (8x)
+    - GPU 1 (16x)
     - name Basic_run
     runs/batch/run_for_all_seeds.sh  -N Basic_run \
                                      -f itr_299.pkl \
-                                     -S 16   -X 8
+                                     -S 16   -X 16
     runs/tools/check_experiments.sh  -N Basic_run  -d data/local/asa-basic-run  -f itr_299.pkl
 
 
