@@ -2,13 +2,14 @@
 # Launch asa_basic_run.py for all seeds.
 
 usage="
-Usage: $(basename $0) [-N <exp_name> [-f <final_file>]] [-S num_seeds] [-X max_parallel]
+Usage: $(basename $0) [-N <exp_name> [-f <final_file>]] [-S num_seeds] [-x] [-X max_parallel]
 Launch asa_basic_run.py for all seeds
 
 Options:
   -N exp_name      (part of) experiment name, used to check for failed runs
   -f final_file    name of final file marking successful run. Default = final.pkl
   -S num_seeds     number of seeds to run. Default = 16
+  -x                       eager parallelism - start new run as soon as other finishes
   -X max_parallel  maximal number of parallel runs. Default = 16
 "
 
@@ -16,13 +17,15 @@ Options:
 exp_name="noname"
 final_file="final.pkl"
 num_seeds=16
+eager_parallel=false
 max_parallel=16
 busy_wait_time=60  # seconds
-while getopts N:f:S:X: option; do
+while getopts N:f:S:xX: option; do
   case "${option}" in
     N) exp_name=${OPTARG}; ;;
     f) final_file=${OPTARG}; ;;
     S) num_seeds=${OPTARG}; ;;
+    x) eager_parallel=true; ;;
     X) max_parallel=${OPTARG}; ;;
     *) echo "$usage" ; exit 1; ;;
   esac
@@ -53,25 +56,33 @@ for seed in $(seq 1 $num_seeds); do
   if [ $num_pids -ge $max_parallel ]; then
     sleep 1
     echo "Waiting for processes..."
-    while [ $num_pids -ge $max_parallel ]; do
-      # Break if stop file is found
-      if [ -f "$tmp_dir/STOP" ]; then
-        echo "Warning: Interrupting script, stop file was found"
-        break 10
-      fi
-      # Wait
-      sleep $busy_wait_time
-      # Check which back_pids are still running
-      old_back_pids=("${back_pids[*]}")
+    if ! $eager_parallel; then
+      for p in ${back_pids[*]}; do
+        wait $p
+      done
       unset back_pids
       num_pids=0
-      for p in ${old_back_pids[*]}; do
-        if ps -p $p > /dev/null; then
-          back_pids[$num_pids]=$p
-          num_pids=$((num_pids+1))
+    else
+      while [ $num_pids -ge $max_parallel ]; do
+        # Break if stop file is found
+        if [ -f "$tmp_dir/STOP" ]; then
+          echo "Warning: Interrupting script, stop file was found"
+          break 10
         fi
+        # Wait
+        sleep $busy_wait_time
+        # Check which back_pids are still running
+        old_back_pids=("${back_pids[*]}")
+        unset back_pids
+        num_pids=0
+        for p in ${old_back_pids[*]}; do
+          if ps -p $p > /dev/null; then
+            back_pids[$num_pids]=$p
+            num_pids=$((num_pids+1))
+          fi
+        done
       done
-    done
+    fi
   fi
 
   # Check whether this run was already executed

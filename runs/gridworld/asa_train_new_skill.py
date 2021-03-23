@@ -205,7 +205,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'Skill_Top_T20_sbpt2to4'  # Name of run
+exp_name_extra = 'Skill_Top_sbpt2to4'  # Name of run
 
 # Seed
 seed = seed if args.seed == 'keep' \

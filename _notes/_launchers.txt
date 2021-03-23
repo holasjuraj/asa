@@ -135,14 +135,14 @@ NEW SKILL Jvvv:
     runs/tools/check_experiments.sh  -N Skill_Jvvv_rpos_b20k_mpl800  -d data/local/asa-train-new-skill
 
 NEW SKILL Top:
-    - GPU 1 (16x)
+    - GPU 1 (16x lazy)
     - path length 2-4
     - top skill
     - batch size 20_000
     - max path length 800
-    - name Skill_Top_T20_sbpt2to4
-    runs/batch/train_new_skills.sh  -d data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Basic_runs \
-                                    -n Skill_Top_T20_sbpt2to4 \
+    - name Skill_Top_sbpt2to4
+    runs/batch/train_new_skills.sh  -d data/archive/TEST21_Resumed_all_Basic_skills/Basic_runs \
+                                    -n Skill_Top_sbpt2to4 \
                                     -g 10   -i 19   -I 149 \
                                     -X 16
-    runs/tools/check_experiments.sh  -N Skill_Top_T20_sbpt2to4  -d data/local/asa-train-new-skill
+    runs/tools/check_experiments.sh  -N Skill_Top_sbpt2to4  -d data/local/asa-train-new-skill
