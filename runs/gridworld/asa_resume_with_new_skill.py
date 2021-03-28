@@ -38,11 +38,11 @@ parser.add_argument('-s', '--seed',
 args = parser.parse_args()
 
 snapshot_file = args.file or \
-                '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Basic_runs/2021_02_02-09_50--Basic_run_M2_13r4d_6coin_7step_300itrs--s4/itr_79.pkl'
+                '/home/h/holas3/garage/data/archive/TEST21_Resumed_all_Basic_skills/Basic_runs/2021_03_18-11_38--Basic_run--s1/itr_119.pkl'
                 # DEBUG For direct runs: path to snapshot file (itr_N.pkl) to start from
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 new_skill_policy_file = args.skill_policy or \
-                '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.75/2021_02_25-22_55--after_itr_79--Skill_Top_T20_sbpt2to4--s4/final.pkl'
+                '/home/h/holas3/garage/data/archive/TEST21_Resumed_all_Basic_skills/Skill_policies/Skill_Top_sbpt2to4--good_a0.75/2021_03_19-20_03--after_itr_119--Skill_Top_sbpt2to4--s1/final.pkl'
                 # DEBUG For direct runs: path to file with new skill policy
 
 # # DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
@@ -91,41 +91,15 @@ def run_task(*_):
         base_env = saved_data['env'].env.env  # <NormalizedEnv<MinibotEnv instance>>
 
         # Skill policies, operating in base environment
-        # 1) Basic skill policies
-        skill_targets = [  # 13 basic room regions + target
-            ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
-            (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
-            (37,  5), (37, 18), (37, 33),
-            (43, 54)
-        ]
-        basic_skill_policies = [None] * 13
-        basic_skill_policies_stop_funcs = [None] * 13
-        for skill_dir in os.listdir(basic_skills_dir):
-            skill_id = int(skill_dir[skill_dir.find('--trg') + 5:])
-            basic_skill_file = os.path.join(basic_skills_dir, skill_dir, 'final.pkl')
-            with open(basic_skill_file, 'rb') as file:
-                basic_skill_data = dill.load(file)
-            basic_skill_policy = basic_skill_data['policy']
-            basic_skill_stop_func = \
-                GridworldTargetPolicy(env_spec=base_env.spec, target=skill_targets[skill_id])\
-                .skill_stopping_func
-            if skill_id < 13:
-                basic_skill_policies[skill_id] = basic_skill_policy
-                basic_skill_policies_stop_funcs[skill_id] = basic_skill_stop_func
-            else:
-                basic_target_skill_policy = basic_skill_policy
-                basic_target_skill_stop_func = basic_skill_stop_func
-        # 2) Step policies
-        step_policies = [GridworldStepPolicy(env_spec=base_env.spec, direction=d, n=7) for d in range(4)]
-        step_policies_stop_funcs = [pol.skill_stopping_func for pol in step_policies]
-        # 3) New skill policy
-        # new_skill_policy    = basic_target_skill_policy     # DEBUG use trained Basic target policy as new skill
-        # new_skill_stop_func = basic_target_skill_stop_func  # DEBUG use trained Basic target policy as new skill
+        # 1) Old skill policies
+        old_skill_policies = list(saved_data['hrl_policy'].skill_policies)
+        old_skill_policies_stop_funcs = list(saved_data['hrl_policy']._skill_stop_functions)
+        # 2) New skill policy
         # new_skill_policy    = GridworldRandomPolicy(env_spec=base_env.spec, n=25)   # DEBUG use GridworldRandomPolicy as new skill
         # new_skill_stop_func = new_skill_policy.skill_stopping_func                  # DEBUG use GridworldRandomPolicy as new skill
-        # 4) Put all skills together
-        trained_skill_policies = basic_skill_policies + step_policies + [new_skill_policy]
-        trained_skill_policies_stop_funcs = basic_skill_policies_stop_funcs + step_policies_stop_funcs + [new_skill_stop_func]
+        # 3) Put all skills together
+        trained_skill_policies = old_skill_policies + [new_skill_policy]
+        trained_skill_policies_stop_funcs = old_skill_policies_stop_funcs + [new_skill_stop_func]
 
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 

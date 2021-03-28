@@ -11,15 +11,14 @@ from pandas.errors import EmptyDataError
 
 # Define input/output
 data_dir         = '/home/h/holas3/garage/data/local/asa-train-new-skill'
-data_dir   = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.75'
-successful_dir   = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.25--bad_a0.75'
-unsuccessful_dir = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Skill_policies/Skill_Top_T20_sbpt2to4--bad_a0.25'
-dry_run          = True  # do not actually move folders
+successful_dir   = '/home/h/holas3/garage/data/archive/TEST21_Resumed_all_Basic_skills/Skill_policies/Skill_Top_sbpt2to4--good_a0.75'
+unsuccessful_dir = '/home/h/holas3/garage/data/archive/TEST21_Resumed_all_Basic_skills/Skill_policies/Skill_Top_sbpt2to4--bad_a0.75'
+dry_run          = False  # do not actually move folders
 
 # Define sorting preferences
 sort_metric       = 'AverageReturn'
 smoothing_factor  = 0.95
-success_threshold = 0.25
+success_threshold = 0.75
 
 
 
