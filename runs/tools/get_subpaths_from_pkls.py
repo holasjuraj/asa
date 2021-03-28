@@ -10,19 +10,19 @@ from sandbox.asa.utils.path_trie import PathTrie
 # If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-data_dir = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all_Wrong_stop_fun/Basic_runs'
-output_filename = os.path.join(data_dir, 'Subpaths_from_pkls--len2-4.tsv')
+data_dir = '/home/h/holas3/garage/data/tmp/TEST07/Basic_runs'
+output_filename = os.path.join(data_dir, 'Subpaths_from_pkls--len3-5--empiric2.tsv')
 output_file = open(output_filename, 'w')
 
-min_itr_num = 19
-max_itr_num = 149
-itr_gap     = 10
+min_itr_num = 0
+max_itr_num = 79
+itr_gap     = 1
 
-trie_min_length = 2
-trie_max_length = 4
-# trie_action_map = {0: 's', 1: 'L', 2: 'R'}  # for Minibot
+trie_min_length = 3
+trie_max_length = 5
+trie_action_map = {0: 's', 1: 'L', 2: 'R'}  # for Minibot
 # trie_action_map = {i: ch for i, ch in enumerate('ABCDEFGHIJKLMNO#^>v<')}  # for Gridworld 16reg
-trie_action_map = {i: ch for i, ch in enumerate('ABCDEFGHIJKLM^>v<')}  # for Gridworld 13reg
+# trie_action_map = {i: ch for i, ch in enumerate('ABCDEFGHIJKLM^>v<')}  # for Gridworld 13reg
 trie_min_f_score = 1
 trie_max_results = 7
 trie_min_count = 10

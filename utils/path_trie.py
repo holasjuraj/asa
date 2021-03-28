@@ -56,6 +56,7 @@ class PathTrie:
         self.num_actions = num_actions
         self.num_eps = 0    # number of paths/roll-outs/episodes collected within the batch
         self.num_steps = 0  # total number of steps taken in batch
+        self.action_counts = [0] * self.num_actions
 
     def add(self, path, observations, add_subpaths=True, min_length=1):
         """
@@ -86,6 +87,8 @@ class PathTrie:
         # TODO assert actions 1D shape (after conversion to np array)
         self.num_eps += 1
         self.num_steps += len(actions)
+        for a in actions:
+            self.action_counts[a] += 1
         # TODO {pass the last observation as well | Re: no, rather ignore last action. Done.},
         #   then change actions and observations to numpy arrays
         #   Changes in callers of this function, in add(), get_starts(), get_ends(), Node.add_count(), maybe others
@@ -106,23 +109,29 @@ class PathTrie:
         :param cnt: count (# of occurrences) of this path
         :param null_hyp_opts: override trie's counts of:
                               {'num_paths' : number of paths/roll-outs/episodes collected within the batch (int),
-                               'num_steps' : total number of steps taken in batch (int)}
+                               'num_steps' : total number of steps taken in batch (int),
+                               'action_counts' : how many times each action occurred (list)}
         """
         if not null_hyp_opts:
             null_hyp_opts = {}
         sq_len = len(top)
         num_steps = null_hyp_opts.get('num_steps', self.num_steps)
         num_eps = null_hyp_opts.get('num_paths', self.num_eps)
+        action_probs = np.asarray(null_hyp_opts.get('action_counts', self.action_counts))
+        action_probs = (action_probs + 1) / np.sum(action_probs)
         '''
-        Following formula is a variation of: https://math.stackexchange.com/a/220549
+        Following formula is a variation of: https://math.stackexchange.com/a/1740273
         n: length of total string = num_steps
         m: length of searched substring = sq_len
-        p_i: probability of letter/action = (1 / self.num_actions) for all i
-        Formula = (n - num_eps*m + num_eps*1) * (1 / self.num_actions)^m
+        p_i: probability of letter/action = action_probs[top[i]]
+        Formula = (n - num_eps*m + num_eps*1) * prod(p_i)
         '''
-        # TODO use empirical skill probabilities instead of uniform
-        null_cnt = (num_steps + num_eps * (-sq_len+1)) / (self.num_actions**sq_len)
-        return cnt / null_cnt
+        # DEBUG: using uniform probabilities
+        # null_cnt = (num_steps + num_eps * (-sq_len+1)) / (self.num_actions**sq_len)
+        # TODO use empirical skill probabilities instead of uniform:
+        sq_prob = float(np.prod([action_probs[a] for a in top]))
+        null_cnt = (num_steps + num_eps * (-sq_len+1)) * sq_prob
+        return (cnt + 1) / (null_cnt + 1)
 
     @staticmethod
     def aggregate_observations(observations, aggregations='all'):
