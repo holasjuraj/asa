@@ -6,7 +6,7 @@
 # However, some runs may fail before they finish (produce final.pkl). This script also looks for such runs, archives their directories and rerun them.
 
 usage="
-Usage: $(basename $0) -d <data_dir> -n <skill_name> [-g gap] [-i min_itr_num] [-I max_itr_num] [-X max_parallel]
+Usage: $(basename $0) -d <data_dir> -n <skill_name> [-g gap] [-i min_itr_num] [-I max_itr_num] [-x] [-X max_parallel]
 Launch asa_train_new_skill.py for all itr_*.pkl files for all seeds in given folder (also rerun failed runs). Run for:
 - all seeds (subfolders of data_dir folder)
 - all iterations (itr_N.pkl files)
@@ -17,6 +17,7 @@ Options:
   -g gap                   do not run for every itr_*.pkl file, but for every N-th file. Default = 1
   -i iteration_number      minimal iteration number to run for
   -I iteration_number      maximal iteration number to run for
+  -x                       eager parallelism - start new run as soon as other finishes
   -X max_parallel          maximal number of parallel runs. Default = 16
 "
 
@@ -26,15 +27,17 @@ data_dir=""
 skill_name=""
 min_itr_num=0
 max_itr_num=9999
+eager_parallel=false
 max_parallel=16
 busy_wait_time=10  # seconds
-while getopts d:p:n:g:i:I:X: option; do
+while getopts d:p:n:g:i:I:xX: option; do
   case "${option}" in
     d) data_dir=${OPTARG}; ;;
     n) skill_name=${OPTARG}; ;;
     g) gap=${OPTARG}; ;;
     i) min_itr_num=${OPTARG}; ;;
     I) max_itr_num=${OPTARG}; ;;
+    x) eager_parallel=true; ;;
     X) max_parallel=${OPTARG}; ;;
     *) echo "$usage" ; exit 1; ;;
   esac
@@ -92,25 +95,33 @@ for seed_dir in $(ls -d "$data_dir/"*Basic_run*); do
     if [ $num_pids -ge $max_parallel ]; then
       sleep 1
       echo "Waiting for processes..."
-      while [ $num_pids -ge $max_parallel ]; do
-        # Break if stop file is found
-        if [ -f "$tmp_dir/STOP" ]; then
-          echo "Warning: Interrupting script, stop file was found"
-          break 10
-        fi
-        # Wait
-        sleep $busy_wait_time
-        # Check which back_pids are still running
-        old_back_pids=("${back_pids[*]}")
+      if ! $eager_parallel; then
+        for p in ${back_pids[*]}; do
+          wait $p
+        done
         unset back_pids
         num_pids=0
-        for p in ${old_back_pids[*]}; do
-          if ps -p $p > /dev/null; then
-            back_pids[$num_pids]=$p
-            num_pids=$((num_pids+1))
+      else
+        while [ $num_pids -ge $max_parallel ]; do
+          # Break if stop file is found
+          if [ -f "$tmp_dir/STOP" ]; then
+            echo "Warning: Interrupting script, stop file was found"
+            break 10
           fi
+          # Wait
+          sleep $busy_wait_time
+          # Check which back_pids are still running
+          old_back_pids=("${back_pids[*]}")
+          unset back_pids
+          num_pids=0
+          for p in ${old_back_pids[*]}; do
+            if ps -p $p > /dev/null; then
+              back_pids[$num_pids]=$p
+              num_pids=$((num_pids+1))
+            fi
+          done
         done
-      done
+      fi
     fi
 
     # Get itr_N.pkl file
