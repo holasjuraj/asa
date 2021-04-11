@@ -9,7 +9,7 @@ import numpy as np
 
 
 # Define input/output
-data_dir = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Resumed_with_GWTarget_skill'
+data_dir = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Resumed_with_GWStay_skill'
 output_format = 'xlsx'  # 'csv' or xlsx
 output_filename = os.path.join(data_dir, 'All_data--' + os.path.basename(data_dir) + '.' + output_format)
 output_columns = [
@@ -68,7 +68,8 @@ with tf.Session(config=config) as session:
                 if v.tag == 'Iteration':
                     itr = v.simple_value
                 elif v.tag.startswith('DiscreteActions'):
-                    acts[int(v.tag[-2:-1])] = v.simple_value
+                    a_num = int(v.tag[v.tag.find('/') + 1 : -1])
+                    acts[a_num] = v.simple_value
             if itr != -1:
                 actions_events.append((itr, acts))
         actions_events.sort(key=lambda x: x[0])
