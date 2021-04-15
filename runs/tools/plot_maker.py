@@ -9,20 +9,25 @@ rcParams.update({'figure.autolayout': True})
 
 ## Input files
 data_files = [
-    # Minibot
+    ## Minibot
     # 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST07_Resumed_80itrs_discount0.9_pnl0.05\\All_data--Resumed_with_Top_skill.xlsx',
     # 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST07_Resumed_80itrs_discount0.9_pnl0.05\\All_data--Resumed_with_sLLLs_disc099_skill.xlsx',
     # 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST07_Resumed_80itrs_discount0.9_pnl0.05\\All_data--Resumed_with_Random_skill.xlsx',
+    # Minibot HiPPO
     # 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_cogsci_hippo\\rllab-finetuning\\data\\archive\\RUNS02_Minibot\\All_data--local.xlsx',
-    # Gridworld
+    # Minibot Partial-match
+    # 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST23_Resumed_Partial_match_Top_skill\\All_data--Resumed_with_Top_Manhattan.xlsx',
+    # 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST23_Resumed_Partial_match_Top_skill\\All_data--Resumed_with_Top_Euclidean.xlsx',
+    ## Gridworld
     'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST20_Resumed_from_all\\All_data--Resumed_with_Top_skill.xlsx',
-    'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST20_Resumed_from_all\\All_data--Resumed_with_GWTarget_skill.xlsx',
-    'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST20_Resumed_from_all\\All_data--Resumed_with_GWRandom_skill.xlsx',
-    # 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_cogsci_hippo\\rllab-finetuning\\data\\archive\\RUNS03_Gridworld\\Latdim14_data--RUNS03_Gridworld.xlsx',
+    # 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST20_Resumed_from_all\\All_data--Resumed_with_GWTarget_skill.xlsx',
+    # 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST20_Resumed_from_all\\All_data--Resumed_with_GWRandom_skill.xlsx',
+    # Gridworld HiPPO
+    'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_cogsci_hippo\\rllab-finetuning\\data\\archive\\RUNS03_Gridworld\\All_data--RUNS03_Gridworld.xlsx',
 ]
 
 ## Input params
-save_plot = False
+save_plot = True
 save_plot_dir = 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Other\\ICANN 2021\\plots_v2'
 do_legends = False
 skill_label = 'bad'
@@ -60,7 +65,7 @@ else:
     ideal_bad_skill_names = ['Target', 'Random']
     hippo_exp_names = ['latdim14_period2_23', 'latdim50_period2_23']
     hippo_labels = ['HiPPO - latent 18', 'HiPPO - latent 50']
-    hippo_unwanted_seeds = [40, 50, 80, 100]
+    hippo_unwanted_seeds = [10, 40, 50, 100]
 
 
 
@@ -318,8 +323,8 @@ def plotClegend():
 
 
 if __name__ == '__main__':
-    # plot_asa_with_hippo()
-    plot_asa_with_ideal_bad_skills()
+    plot_asa_with_hippo()
+    # plot_asa_with_ideal_bad_skills()
     # plot_manually_triggered()
     # plotC(3, '(a)')
     # plotC(11, '(b)')
