@@ -16,9 +16,6 @@ from garage.misc.instrument import run_experiment    # Experiment-running util
 from garage.misc import logger
 
 
-## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-
 
 # Parse arguments
 parser = argparse.ArgumentParser(description='Train new skill to be used in resumed ASA training')
@@ -31,9 +28,14 @@ parser.add_argument('-s', '--seed',
 args = parser.parse_args()
 
 snapshot_file = args.file or \
-                '/home/h/holas3/garage/data/local/asa-test/2020_01_30-14_21--Basic_run_25itrs_subpth3to5_b5000--s3/itr_8.pkl'
+                '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Basic_runs/2021_02_02-09_50--Basic_run_M2_13r4d_6coin_7step_300itrs--s4/itr_69.pkl'
                 # DEBUG For direct runs: path to snapshot file (itr_N.pkl) from which to train new skill
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
+
+
+## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+# os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
 
 
 def run_task(*_):
@@ -48,9 +50,9 @@ def run_task(*_):
 
         ## Construct PathTrie and find missing skill description
         # This is basically ASA.decide_new_skill
-        min_length = 3
-        max_length = 5
-        action_map = {0: 's', 1: 'L', 2: 'R'}
+        min_length = 2
+        max_length = 4
+        action_map = {i: ch for i, ch in enumerate('ABCDEFGHIJKLM^>v<')}  # for Gridworld 13reg
         min_f_score = 1
         max_results = 10
         aggregations = []  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
@@ -85,15 +87,35 @@ def run_task(*_):
                 pad=max_length))
 
         top_subpath = frequent_paths[0]
-        # # DEBUG always use path sLLLs and its parameters (obss)
-        # top_subpath = path_trie.item_for_path([0, 1, 1, 1, 0], action_map=action_map)
+        # # DEBUG always use path "vvv" and its parameters (obss)
+        # top_subpath = path_trie.item_for_path([15, 15, 15], action_map=action_map)
         # if top_subpath is None:
-        #     print('Path sLLLs is not in trie')
+        #     print('Path "vvv" is not in trie')
         #     exit(1)
         # if top_subpath['count'] < 10:
-        #     print('Path sLLLs has only count = {}'.format(top_subpath['count']))
+        #     print('Path "vvv" has only count = {}'.format(top_subpath['count']))
         #     exit(1)
         # # /DEBUG
+
+        # # DEBUG always use path "Ivvv"/"Jvvv" and its parameters (obss)
+        # ivvv = path_trie.item_for_path([8, 15, 15, 15], action_map=action_map)
+        # jvvv = path_trie.item_for_path([9, 15, 15, 15], action_map=action_map)
+        # if ivvv is not None:
+        #     if jvvv is not None:
+        #         top_subpath = ivvv if (ivvv['f_score'] > jvvv['f_score']) else jvvv
+        #     else:
+        #         top_subpath = ivvv
+        # else:
+        #     if jvvv is not None:
+        #         top_subpath = jvvv
+        #     else:
+        #         print('Paths "Ivvv" and "Jvvv" are not in trie')
+        #         exit(1)
+        # if top_subpath['count'] < 10:
+        #     print('Path "{}" has only count = {}'.format(top_subpath['actions_text'], top_subpath['count']))
+        #     exit(1)
+        # # /DEBUG
+
         start_obss = top_subpath['start_observations']
         end_obss   = top_subpath['end_observations']
 
@@ -101,7 +123,7 @@ def run_task(*_):
 
         ## Prepare elements for training
         # Environment
-        base_env = saved_data['env'].env.env  # <NormalizedEnv<MinibotEnv instance>>
+        base_env = saved_data['env'].env.env  # <NormalizedEnv<GridworldGathererEnv instance>>
         skill_learning_env = TfEnv(
                 SkillLearningEnv(
                     # base env that was wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
@@ -127,10 +149,11 @@ def run_task(*_):
         low_algo_kwargs['baseline'] = baseline
         low_algo_cls = saved_data['low_algo_cls']
 
-        # DEBUG set custom training params (should`ve been set in asa_test)
-        low_algo_kwargs['batch_size'] = 2500
-        low_algo_kwargs['max_path_length'] = 50
-        low_algo_kwargs['n_itr'] = 500
+        # DEBUG set custom training params (should`ve been set in asa_basic_run)
+        low_algo_kwargs['batch_size'] = 20000
+        low_algo_kwargs['max_path_length'] = 800  # maximum distance in map is 108
+        low_algo_kwargs['n_itr'] = 300
+        low_algo_kwargs['discount'] = 0.99
 
         # Algorithm
         algo = low_algo_cls(
@@ -182,7 +205,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'For_all_disc09_Top_skill'  # Name of run
+exp_name_extra = 'Skill_Top_T20_sbpt2to4'  # Name of run
 
 # Seed
 seed = seed if args.seed == 'keep' \

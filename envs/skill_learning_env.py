@@ -45,9 +45,9 @@ class SkillLearningEnv(Wrapper, Serializable):
         # Terminate if agent reached end_obs belonging to start_obs it started from
         end_obs = self._end_obss[self.current_obs_idx, :]
 
-        # a) Full match
-        skill_term = np.array_equiv(obs, end_obs)
-        surr_reward = 1 if skill_term else 0
+        # # a) Full match
+        # skill_term = np.array_equiv(obs, end_obs)
+        # surr_reward = 1 if skill_term else 0
 
         # # b) Partial match (95/90/80%)
         # skill_term = np.mean(np.abs(obs - end_obs)) < 0.05
@@ -57,6 +57,11 @@ class SkillLearningEnv(Wrapper, Serializable):
         # diff = np.mean(np.abs(obs - end_obs))
         # skill_term = diff < 0.1
         # surr_reward = 1 - diff
+
+        # d) Per-dimension partial match
+        threshold = 0.1
+        skill_term = np.max(np.abs(obs - end_obs)) < threshold
+        surr_reward = 1 if skill_term else 0
 
         surr_term = term or skill_term
         return obs, surr_reward, surr_term, info

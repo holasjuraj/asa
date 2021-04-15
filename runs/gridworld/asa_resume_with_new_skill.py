@@ -10,7 +10,7 @@ import numpy as np
 from sandbox.asa.algos import AdaptiveSkillAcquisition
 from sandbox.asa.envs import HierarchizedEnv
 from sandbox.asa.policies import HierarchicalPolicy
-from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy, MinibotRightPolicy, MinibotRandomPolicy
+from sandbox.asa.policies import GridworldTargetPolicy, GridworldStepPolicy, GridworldRandomPolicy, GridworldStayPolicy
 from sandbox.asa.policies import CategoricalMLPSkillIntegrator
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
@@ -19,9 +19,6 @@ from garage.tf.policies import CategoricalMLPPolicy  # Policy networks
 from garage.misc.instrument import run_experiment    # Experiment-running util
 from garage.misc.tensor_utils import flatten_tensors, unflatten_tensors
 
-
-## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
-# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 # Parse arguments
@@ -41,21 +38,32 @@ parser.add_argument('-s', '--seed',
 args = parser.parse_args()
 
 snapshot_file = args.file or \
-                '/home/h/holas3/garage/data/archive/TEST4_Resumed_80itrs_discount0.99/Basic_runs/2020_03_09-21_34--Basic_run_80itrs_6maps_disc099_b5000--s1/itr_3.pkl'
+                '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Basic_runs/2021_02_02-09_50--Basic_run_M2_13r4d_6coin_7step_300itrs--s4/itr_79.pkl'
                 # DEBUG For direct runs: path to snapshot file (itr_N.pkl) to start from
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 new_skill_policy_file = args.skill_policy or \
-                '/home/h/holas3/garage/sandbox/asa/data/local/asa-train-new-skill/2020_03_10-15_10--after_itr_3--For_all_disc099_Skill_sLLLs--s1/final.pkl'
+                '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Jvvv_rpos_b20k_mpl800--good_a0.25/2021_02_17-22_01--after_itr_79--Skill_Jvvv_rpos_b20k_mpl800--s4/final.pkl'
                 # DEBUG For direct runs: path to file with new skill policy
 
-# # DEBUG For runs without loaded skill - to use Minibot*Policy as new skill
-# new_skill_policy_file = None
-# # skill_policy_exp_name = 'MinibotRight'
-# skill_policy_exp_name = 'MinibotRandom'
-# new_skill_subpath = {
-#     'actions': [1, 1, 1],
-#     'start_observations': np.array([[0, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]])  # at corner
-# }
+# DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
+new_skill_policy_file = None
+# skill_policy_exp_name = 'GWTarget'
+# skill_policy_exp_name = 'GWRandom_25'
+skill_policy_exp_name = 'GWStay_25'
+new_skill_subpath = {
+    'actions': [15, 15, 15],
+    'start_observations': np.array([[21, 47,  1,  0, 0, 1, 0, 0, 1],  # in region I, holding coin, some coins picked
+                                    [21, 47,  1,  0, 1, 1, 0, 1, 1],
+                                    [21, 47,  1,  1, 1, 1, 1, 1, 1],
+                                   ])
+}
+# /DEBUG
+
+
+
+## If GPUs are blocked by another user, force use specific GPU (0 or 1), or run on CPU (-1).
+# os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0' if int(args.seed) % 2 == 0 else '1'
 
 
 
@@ -75,27 +83,34 @@ def run_task(*_):
                 new_skill_data = dill.load(file)
             new_skill_policy = new_skill_data['policy']
             new_skill_subpath = new_skill_data['subpath']
-            new_skill_stop_func = lambda path: path['observations'][-1] in new_skill_subpath['end_observations']
+            unique_end_obss = np.unique(new_skill_subpath['end_observations'], axis=0)
+            new_skill_stop_func = lambda path: (path['observations'][-1] == unique_end_obss).all(axis=1).any()
 
         ## Lower level environment & policies
         # Base (original) environment.
         base_env = saved_data['env'].env.env  # <NormalizedEnv<MinibotEnv instance>>
 
         # Skill policies, operating in base environment
-        trained_skill_policies = [
-                MinibotForwardPolicy(env_spec=base_env.spec),
-                MinibotLeftPolicy(env_spec=base_env.spec),
-                new_skill_policy
-                # MinibotRightPolicy(env_spec=base_env.spec)   # DEBUG use MinibotRightPolicy as new skill
-                # MinibotRandomPolicy(env_spec=base_env.spec)  # DEBUG use MinibotRandomPolicy as new skill
+        skill_targets = [  # 13 basic room regions
+            ( 6,  5), ( 6, 18), ( 6, 33), ( 6, 47), ( 6, 61),
+            (21,  5), (21, 18), (21, 33), (21, 47), (21, 61),
+            (37,  5), (37, 18), (37, 33),
         ]
-        trained_skill_policies_stop_funcs = [
-                lambda path: len(path['actions']) >= 5,  # 5 steps to move 1 tile
-                lambda path: len(path['actions']) >= 3,  # 3 steps to rotate 90°
-                new_skill_stop_func
-                # lambda path: len(path['actions']) >= 3  # 3 steps to rotate 90°     # DEBUG use MinibotRightPolicy as new skill
-                # lambda path: len(path['actions']) >= 5  # 5 steps for random policy # DEBUG use MinibotRandomPolicy as new skill
-        ]
+        trained_skill_policies = \
+            [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
+            [GridworldStepPolicy(env_spec=base_env.spec, direction=d, n=7) for d in range(4)] + \
+            [
+             # new_skill_policy
+             # GridworldTargetPolicy(env_spec=base_env.spec, target=(43, 54))  # DEBUG use GridworldTargetPolicy as new skill
+             # GridworldRandomPolicy(env_spec=base_env.spec, n=25)             # DEBUG use GridworldRandomPolicy as new skill
+             GridworldStayPolicy(env_spec=base_env.spec, n=25)             # DEBUG use GridworldStayPolicy as new skill
+            ]
+        trained_skill_policies_stop_funcs = \
+                [pol.skill_stopping_func for pol in trained_skill_policies[:-1]] + \
+                [
+                 # new_skill_stop_func
+                 trained_skill_policies[-1].skill_stopping_func                  # DEBUG use Gridworld*Policy as new skill
+                ]
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 
         ## Upper level environment & policies
@@ -132,8 +147,8 @@ def run_task(*_):
         # 4) Create new policy and randomly initialize its weights
         new_top_policy = CategoricalMLPPolicy(
                 env_spec=tf_hrl_env.spec,  # This env counts with new skill (action space = n + 1)
-                hidden_sizes=(32, 32),     # As was in asa_test.py,
-                name="CategoricalMLPPolicy2"
+                hidden_sizes=(32, 32),     # As was in asa_basic_run.py,
+                name="TopCategoricalMLPPolicy2"
         )
         ntp_init_op = tf.variables_initializer(new_top_policy.get_params())
         ntp_init_op.run()
@@ -150,7 +165,7 @@ def run_task(*_):
                 skill_policy_prototype=skill_policy_prototype,
                 skill_policies=trained_skill_policies,
                 skill_stop_functions=trained_skill_policies_stop_funcs,
-                skill_max_timesteps=50  # TODO? was 20, changed to 50 like in asa_train_new_skill
+                skill_max_timesteps=150  # TODO? should match number in asa_basic_run
         )
         # Link hrl_policy and hrl_env, so that hrl_env can use skills
         hrl_env.set_hrl_policy(hrl_policy)
@@ -168,15 +183,15 @@ def run_task(*_):
                 low_algo_cls=TRPO,
                 # Top algo kwargs
                     batch_size=5000,
-                    max_path_length=100,
-                    n_itr=80,
+                    max_path_length=50,
+                    n_itr=300,
                     start_itr=saved_data['itr'] + 1,  # Continue from previous iteration number
-                    discount=0.9,
+                    discount=0.99,
                     force_batch_sampler=True,
                 low_algo_kwargs={
-                    'batch_size': 1000,
-                    'max_path_length': 30,
-                    'n_itr': 25,
+                    'batch_size': 20000,
+                    'max_path_length': 800,
+                    'n_itr': 300,
                     'discount': 0.99,
                 }
         )
@@ -206,7 +221,7 @@ def run_task(*_):
 # General experiment settings
 seed = 3                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
-exp_name_extra = 'From_all_manual'  # Name of run
+exp_name_extra = 'From_all'  # Name of run
 
 # Skill policy experiment name
 if new_skill_policy_file:

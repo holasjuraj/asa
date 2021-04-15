@@ -9,7 +9,7 @@ itr="1"
 max_parallel=8
 
 # Make tmp dir
-tmp_dir=$(date '+resumed_trainings_output-%Y_%m_%d-%H_%M')
+tmp_dir="_experiment_outputs/asa_resumed_trainings_output-$(date '+%Y_%m_%d-%H_%M_%S')"
 mkdir $tmp_dir
 
 # Launch all trainings

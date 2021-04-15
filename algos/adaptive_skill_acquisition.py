@@ -93,7 +93,8 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         # TODO extract Trie parameters
         min_length = 3
         max_length = 5
-        action_map = {0: 's', 1: 'L', 2: 'R'}
+        # action_map = {0: 's', 1: 'L', 2: 'R'}  # for Minibot
+        action_map = {i: ch for i, ch in enumerate('ABCDEFGHIJKLMNO#^>v<')}  # for Gridworld
         min_f_score = 0  # DEBUG
         max_results = 10
         aggregations = ['mean']  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
