@@ -49,6 +49,8 @@ class CategoricalMLPSkillIntegrator(SkillIntegrator):
 
 
     def integrate_skill(self, old_policy_weights, method=Method.RANDOM, **kwargs):
+        if type(method) is not str:
+            method = method.value
         new_weights = [np.copy(value) for value in old_policy_weights]
         out_w = new_weights[-2]
         out_b = new_weights[-1]

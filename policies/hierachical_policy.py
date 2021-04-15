@@ -86,7 +86,10 @@ class HierarchicalPolicy(Serializable):
         )
         self.skill_policies.append(new_skill_pol)
         self._skills_end_obss.append(np.copy(end_obss))
+
+        unique_end_obss = np.unique(self._skills_end_obss[new_skill_id], axis=0)
         self._skill_stop_functions.append(
-            lambda path: path['observations'][-1] in self._skills_end_obss[new_skill_id]
+            # lambda path: path['observations'][-1] in self._skills_end_obss[new_skill_id]
+            lambda path: (path['observations'][-1] == unique_end_obss).all(axis=1).any()
         )
         return new_skill_pol, new_skill_id

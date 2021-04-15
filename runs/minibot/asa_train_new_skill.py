@@ -143,7 +143,7 @@ def run_task(*_):
         logger_snapshot_dir_before = logger.get_snapshot_dir()
         logger_snapshot_mode_before = logger.get_snapshot_mode()
         logger_snapshot_gap_before = logger.get_snapshot_gap()
-        # No need to change snapshot dir in this script, it is used in ASA-algo.make_new_skill()
+        # No need to change snapshot dir in this script, it is used in ASA-algo.create_and_train_new_skill()
         # logger.set_snapshot_dir(os.path.join(
         #         logger_snapshot_dir_before,
         #         'skill{}'.format(new_skill_id)
