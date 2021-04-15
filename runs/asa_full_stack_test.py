@@ -12,7 +12,7 @@ from sandbox.asa.policies import MinibotForwardPolicy, MinibotLeftPolicy
 
 from garage.tf.algos import TRPO                     # Policy optimization algorithm
 from garage.tf.baselines import GaussianMLPBaseline  # Baseline for Advantage function { A(s, a) = Q(s, a) - B(s) }
-from sandbox.asa.envs import MinibotStepEnv          # Environment
+from sandbox.asa.envs import MinibotEnv              # Environment
 from garage.envs import normalize                    #
 from garage.tf.envs import TfEnv                     #
 from garage.tf.policies import CategoricalMLPPolicy, GaussianMLPPolicy  # Policy networks
@@ -46,7 +46,7 @@ def run_task(*_):
     ## Lower level environment & policies
     # Base (original) environment.
     base_env = normalize(
-                MinibotStepEnv(
+                MinibotEnv(
                     use_maps='all',  # [0,1]
                     discretized=True,
                     states_cache=dict()
@@ -137,7 +137,7 @@ def run_task(*_):
 # shutil.rmtree('/home/h/holas3/garage/data/local/asa_test/instant_run', ignore_errors=False)
 
 # General experiment settings
-seed = 3                    # Will be ignored if --seed option is used
+seed = 2                    # Will be ignored if --seed option is used
 exp_name_direct = None      # If None, exp_name will be constructed from exp_name_extra and other info. De-bug value = 'instant_run'
 exp_name_extra = 'Full_stack_Minibot'  # Name of run
 

@@ -114,7 +114,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         min_f_score = 2
         max_results = 10
         aggregations = []  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
-        f_score_step_factor = 2
+        f_score_step_factor = 1.5
 
         # TODO? share path trie among more batches?
         paths = samples_data['paths']
