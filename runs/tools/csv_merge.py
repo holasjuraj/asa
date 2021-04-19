@@ -9,14 +9,14 @@ import numpy as np
 
 
 # Define input/output
-data_dir = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Resumed_with_GWStay_skill'
+data_dir = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Resumed_with_Top_skill'
 output_format = 'xlsx'  # 'csv' or xlsx
 output_filename = os.path.join(data_dir, 'All_data--' + os.path.basename(data_dir) + '.' + output_format)
 output_columns = [
         'ExpName', 'ExpSkill', 'ExpIntegrator', 'ExpResumedFrom', 'ExpSeed', 'ExpDatetime',
         'Iteration', 'AverageDiscountedReturn', 'AverageReturn',
         'StdReturn', 'MaxReturn', 'MinReturn',
-        'NumTrajs', 'SuccessfulTrajs', 'ItrTime', 'Time'
+        'NumTrajs', 'SuccessfulTrajs', 'ItrTime', 'Time', 'BatchSamples'
 ]
 discrete_actions = 18
 output_columns += [f'DiscreteActions/{i}' for i in range(discrete_actions)]
