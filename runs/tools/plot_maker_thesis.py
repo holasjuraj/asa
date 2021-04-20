@@ -15,7 +15,7 @@ class PlotMakerThesis:
         datafiles = {
             'mb asa':    'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST07_Resumed_80itrs_discount0.9_pnl0.05\\All_data--Resumed_with_Top_skill.xlsx',
             'mb ideal':  'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST07_Resumed_80itrs_discount0.9_pnl0.05\\All_data--Resumed_with_sLLLs_disc099_skill.xlsx',
-            'mb bad': 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST07_Resumed_80itrs_discount0.9_pnl0.05\\All_data--Resumed_with_Random_skill.xlsx',
+            'mb bad':    'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST07_Resumed_80itrs_discount0.9_pnl0.05\\All_data--Resumed_with_Random_skill.xlsx',
             'mb hippo':  'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_cogsci_hippo\\rllab-finetuning\\data\\archive\\RUNS02_Minibot\\All_data--local.xlsx',
             'mb asa partial match': 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST23_Resumed_Partial_match_Top_skill\\All_data--Resumed_with_Top_Euclidean.xlsx',
             'gw asa':    'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_saturn\\data\\archive\\TEST20_Resumed_from_all\\All_data--Resumed_with_Top_skill.xlsx',

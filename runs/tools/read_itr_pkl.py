@@ -16,11 +16,11 @@ import numpy as np
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-itr = '80'
-file_path = f'/home/h/holas3/garage/data/local/asa-resume-with-new-skill/DEBUG--resumed_itr_79--From_all--skill_GWTarget--integ3_sbptAvg--s4/itr_{itr}.pkl'
-file_path = f'/home/h/holas3/garage/data/local/asa-resume-with-new-skill/DEBUG--resumed_itr_79--From_all_smpl350--skill_Skill_Jvvv_rpos_b20k_mpl800--integ3_sbptAvg--s4/itr_{itr}.pkl'
 
-file_path = '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Jvvv_rpos_b20k_mpl800--good_a0.25/2021_02_17-22_01--after_itr_79--Skill_Jvvv_rpos_b20k_mpl800--s4/final.pkl'
+seed, itr, file_path = 3, 49, '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.75/2021_02_25-02_53--after_itr_49--Skill_Top_T20_sbpt2to4--s3/final.pkl'
+# seed, itr, file_path = 5, 49, '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.75/2021_02_25-16_17--after_itr_49--Skill_Top_T20_sbpt2to4--s5/final.pkl'
+# seed, itr, file_path = 5, 119, '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.75/2021_02_25-21_17--after_itr_119--Skill_Top_T20_sbpt2to4--s5/final.pkl'
+# seed, itr, file_path = 5, 129, '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Top_T20_sbpt2to4--good_a0.75/2021_02_25-12_28--after_itr_129--Skill_Top_T20_sbpt2to4--s5/final.pkl'
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -81,9 +81,10 @@ start_poss = new_skill_subpath['start_observations'][:, :2]
 end_poss = new_skill_subpath['end_observations'][:, :2]
 
 GridworldGathererEnv()._plot_visitations([])
-plt.scatter(start_poss[:, 1], 45 - start_poss[:, 0], c='green')
-plt.scatter(end_poss[:, 1], 45 - end_poss[:, 0], c='red')
-plt.savefig(f'skill_Jvvv_itr79--start_ends--noalpha.png')
+plt.scatter(start_poss[:, 1], 45 - start_poss[:, 0], c='green', alpha=0.25)
+plt.scatter(end_poss[:, 1], 45 - end_poss[:, 0], c='red', alpha=0.15)
+plt.savefig(f'skill_Top_s{seed}_itr{itr}--start_ends.png', dpi=300)
+# plt.savefig(f'plain_map.png', dpi=300)
 
 
 
