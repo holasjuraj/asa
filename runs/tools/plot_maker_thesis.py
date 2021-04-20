@@ -24,7 +24,7 @@ class PlotMakerThesis:
             'gw hippo':  'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Code_cogsci_hippo\\rllab-finetuning\\data\\archive\\RUNS03_Gridworld\\All_data--RUNS03_Gridworld.xlsx',
         }
         self.data = DataManager(datafiles, self)
-        self.out_folder = 'C:\\Users\\Juraj\\Documents\\Škola\\FMFI\\PhD\\Dizertačná práca\\img\\plots'
+        self.out_folder = r'C:\Users\Juraj\Documents\Škola\FMFI\PhD\Dizertačná práca\img\plots'
         self.out_folder = os.path.join(self.out_folder, datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S'))
 
         # General settings
@@ -45,6 +45,7 @@ class PlotMakerThesis:
                 ],
                 'plot_x_lim': (0, 79),
                 'plot_y_lim': (-2.25, 0),
+                'plot_x_tics': (list(range(0, 80, 10)) + [79], list(map(str, range(0, 81, 10)))),
                 'plot_y_tics': (np.arange(-2.25, 0.1, 0.25), ['', '$-2.0$', '', '$-1.5$', '', '$-1.0$', '', '$-0.5$', '', '0.0'])
             },
             'gw': {  # Gridworld
@@ -58,20 +59,26 @@ class PlotMakerThesis:
                 ],
                 'plot_x_lim': (0, 299),
                 'plot_y_lim': (0, 6),
+                'plot_x_tics': (list(range(0, 300, 50)) + [299], list(map(str, range(0, 301, 50)))),
                 'plot_y_tics': (list(range(7)),)
             },
         }
+        # TODO sizing of ideal_asa_bad plots
+        # TODO sizing of 2nd and 3rd integrators plots
 
 
     def do_plots(self):
-        self.plot_asa_with_hippo('mb')
         self.plot_asa_with_hippo('gw')
-        self.plot_new_skill_usage('mb')
+        self.plot_asa_with_hippo('mb')
         self.plot_new_skill_usage('gw')
-        self.plot_ideal_asa_bad_selected('mb')
+        self.plot_new_skill_usage('mb')
         self.plot_ideal_asa_bad_selected('gw')
-        self.plot_ideal_asa_bad_all('mb')
+        self.plot_ideal_asa_bad_selected('mb')
         self.plot_ideal_asa_bad_all('gw')
+        self.plot_ideal_asa_bad_all('mb')
+        self.plot_integrators(3, labels=True)
+        self.plot_integrators(11)
+        self.plot_integrators(39)
 
 
     ################ Plotters ################
@@ -210,7 +217,8 @@ class PlotMakerThesis:
         legend_loc = 'lower right' if env == 'mb' else 'upper right'
         if env == 'gw':
             plt.yticks(range(0, 2251, 250), ['0', '', '500', '', '1000', '', '1500', '', '2000', ''])
-        self.tidy_plot(env, w=12, h=10, y_lim=(0, y_max), y_label='Invocations of new skill')
+        y_label = 'Invocations of new skill' if env == 'gw' else None
+        self.tidy_plot(env, w=12, h=10, y_lim=(0, y_max), y_label=y_label)
         plt.legend(ncol=2, loc=legend_loc)
         self.show_save_plot(f'asa-individual-runs-{env}')
 
@@ -248,7 +256,8 @@ class PlotMakerThesis:
 
 
         # Finalize
-        self.tidy_plot(env, w=12, h=10)
+        y_label = y_label='Average discounted reward' if env == 'gw' else None
+        self.tidy_plot(env, w=12, h=10, y_label=y_label)
         plt.legend(loc='lower right')
         self.show_save_plot(f'ideal-asa-bad-selected-{env}')
 
@@ -261,7 +270,7 @@ class PlotMakerThesis:
         rcParams.update({'figure.autolayout': False})
         params = self.env_params[env]
         fig, _ = plt.subplots(3, 1, sharex='all', sharey='all')
-        fig.subplots_adjust(hspace=0, left=0.17, right=0.97, top=0.99, bottom=0.05)
+        fig.subplots_adjust(hspace=0, left=0.12, right=0.97, top=0.99, bottom=0.05)
 
         # Plot for all three skills
         # color tool: https://www.cssfontstack.com/oldsites/hexcolortool/
@@ -308,9 +317,70 @@ class PlotMakerThesis:
         # Finalize
         w, h = 12, 25
         plt.gcf().set_size_inches(w=w/2.54, h=h/2.54)   # convert to inches
+        plt.xticks(*self.env_params[env]['plot_x_tics'])
         plt.xlabel('Iteration')
         self.show_save_plot(f'ideal-asa-bad-selected-{env}')
         rcParams.update({'figure.autolayout': True})
+
+
+    def plot_integrators(self, res_from, labels=False):
+        env = 'mb'
+        print(f'Plotting integrators - {env} - resumed from {res_from}')
+        plt.figure()
+
+        # Basic run
+        plt.plot(
+                *self.data(env, 'asa')
+                    .filter_basic_runs()
+                    .get_reward_mean(),
+                color='black', label='Base run'
+        )
+
+        # ASA with different integrators
+        integrators = [
+            ('rnd',         'Random',           'red'),
+            ('rndBias',     'Bias–boosted',     'darkorange'),  # labels have en-dashes
+            ('startObsAvg', 'Start–states',     'blue'),
+            ('sbptFrst',    'First–skill',      'green'),
+            ('sbptAvg',     'All–skills',       'tab:cyan'),
+            ('sbptSmthAvg', 'Smoothed–skills',  'purple')
+        ]
+        for integrator, label, color in integrators:
+            kwargs = dict()
+            if not integrator.startswith('rnd'):
+                kwargs = {'linewidth': 0.8, 'alpha': 0.8}
+            plt.plot(
+                *self.data(env, 'asa')
+                    .filter_skill_name('Top')
+                    .filter_integrator(integrator)
+                    .filter_resumed_from(res_from)
+                    .append_prev_itr()
+                    .get_reward_mean(),
+                color=color,
+                **kwargs
+            )
+
+        # Finalize
+        y_label = 'Average discounted reward' if labels else None
+        self.tidy_plot(env, w=12, h=10, y_label=y_label, y_hide_numbers=not labels)
+        self.show_save_plot(f'integrators-{env}-from-itr{res_from+1}')
+
+        # Legend
+        if labels:
+            print(f'Plotting legend for integrators')
+            plt.figure(figsize=(4.52, 1.18))
+            plt.axis('off')
+            plt.plot(0, 0, color='black', label='Base run')
+            plt.plot(0, 0, alpha=0, label=' ')
+            plt.plot(0, 0, alpha=0, label=r'$\bf{Uninformed\ schemes:}$')
+            for _, label, color in integrators[:2]:
+                plt.plot(0, 0, color=color, label=label)
+            plt.plot(0, 0, alpha=0, label=r'$\bf{Informed\ schemes:}$')
+            for _, label, color in integrators[2:]:
+                plt.plot(0, 0, color=color, label=label)
+            plt.legend(ncol=2, loc='center', bbox_to_anchor=(0.1, 0.5))
+            self.show_save_plot(f'integrators-legend')
+
 
 
     ################ Helpers ################
@@ -325,7 +395,7 @@ class PlotMakerThesis:
         plt.fill_between(x, low, high, color=color, alpha=alpha)
 
     def tidy_plot(self, env, w=24., h=10.,
-                  x_label='Iteration', y_label='Avg. discounted reward',
+                  x_label='Iteration', y_label='Average discounted reward',
                   x_lim=None, y_lim=None, y_hide_numbers=False,
                   tight_layout=True
                  ):
@@ -339,6 +409,7 @@ class PlotMakerThesis:
         plt.grid()
         if x_lim is None:
             x_lim = self.env_params[env]['plot_x_lim']
+            plt.xticks(*self.env_params[env]['plot_x_tics'])
         plt.xlim(*x_lim)
         if y_lim is None:
             y_lim = self.env_params[env]['plot_y_lim']
