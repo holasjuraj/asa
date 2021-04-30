@@ -84,14 +84,10 @@ class PathTrie:
         :param min_length: minimum length of subpath to add
         :param max_length: maximum length of subpath to add
         """
-        # TODO assert actions 1D shape (after conversion to np array)
         self.num_eps += 1
         self.num_steps += len(actions)
         for a in actions:
             self.action_counts[a] += 1
-        # TODO {pass the last observation as well | Re: no, rather ignore last action. Done.},
-        #   then change actions and observations to numpy arrays
-        #   Changes in callers of this function, in add(), get_starts(), get_ends(), Node.add_count(), maybe others
         if type(observations) == np.ndarray:
             observations = observations.tolist()
 
@@ -244,7 +240,6 @@ class PathTrie:
         if not null_hyp_opts:
             null_hyp_opts = {}
         paths = []
-        # TODO? add some counting of std of paths within a node?
 
         def top_to_actions(top):
             """

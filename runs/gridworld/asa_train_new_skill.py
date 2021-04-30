@@ -29,7 +29,7 @@ args = parser.parse_args()
 
 snapshot_file = args.file or \
                 '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Basic_runs/2021_02_02-09_50--Basic_run_M2_13r4d_6coin_7step_300itrs--s4/itr_69.pkl'
-                # DEBUG For direct runs: path to snapshot file (itr_N.pkl) from which to train new skill
+                # For direct runs: path to snapshot file (itr_N.pkl) from which to train new skill
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 
 
@@ -87,34 +87,6 @@ def run_task(*_):
                 pad=max_length))
 
         top_subpath = frequent_paths[0]
-        # # DEBUG always use path "vvv" and its parameters (obss)
-        # top_subpath = path_trie.item_for_path([15, 15, 15], action_map=action_map)
-        # if top_subpath is None:
-        #     print('Path "vvv" is not in trie')
-        #     exit(1)
-        # if top_subpath['count'] < 10:
-        #     print('Path "vvv" has only count = {}'.format(top_subpath['count']))
-        #     exit(1)
-        # # /DEBUG
-
-        # # DEBUG always use path "Ivvv"/"Jvvv" and its parameters (obss)
-        # ivvv = path_trie.item_for_path([8, 15, 15, 15], action_map=action_map)
-        # jvvv = path_trie.item_for_path([9, 15, 15, 15], action_map=action_map)
-        # if ivvv is not None:
-        #     if jvvv is not None:
-        #         top_subpath = ivvv if (ivvv['f_score'] > jvvv['f_score']) else jvvv
-        #     else:
-        #         top_subpath = ivvv
-        # else:
-        #     if jvvv is not None:
-        #         top_subpath = jvvv
-        #     else:
-        #         print('Paths "Ivvv" and "Jvvv" are not in trie')
-        #         exit(1)
-        # if top_subpath['count'] < 10:
-        #     print('Path "{}" has only count = {}'.format(top_subpath['actions_text'], top_subpath['count']))
-        #     exit(1)
-        # # /DEBUG
 
         start_obss = top_subpath['start_observations']
         end_obss   = top_subpath['end_observations']
@@ -149,7 +121,7 @@ def run_task(*_):
         low_algo_kwargs['baseline'] = baseline
         low_algo_cls = saved_data['low_algo_cls']
 
-        # DEBUG set custom training params (should`ve been set in asa_basic_run)
+        # Set custom training params (should`ve been set in asa_basic_run)
         low_algo_kwargs['batch_size'] = 20000
         low_algo_kwargs['max_path_length'] = 800  # maximum distance in map is 108
         low_algo_kwargs['n_itr'] = 300

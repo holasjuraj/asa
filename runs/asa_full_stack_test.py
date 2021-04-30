@@ -24,21 +24,12 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
 # Parse arguments
-parser = argparse.ArgumentParser(description='Resume ASA training with new skill')
+parser = argparse.ArgumentParser(description='Run full-stack ASA test')
 parser.add_argument('-s', '--seed',
                     help='specific randomization seed, "random" for random seed, '
                          '"keep" to keep seed specified in training script. Default: "keep"',
                     metavar='SEED', default='keep')
 args = parser.parse_args()
-
-
-# plot = True
-# if plot:
-#     # Workaround to create Qt application in main thread
-#     import matplotlib
-#     matplotlib.use('qt5Agg')
-#     import matplotlib.pyplot as plt
-#     plt.figure()
 
 
 def run_task(*_):
@@ -47,8 +38,6 @@ def run_task(*_):
     # Base (original) environment.
     base_env = normalize(
                 MinibotEnv(
-                    use_maps='all',  # [0,1]
-                    discretized=True,
                     states_cache=dict()
                 )
     )
@@ -88,7 +77,7 @@ def run_task(*_):
             skill_policy_prototype=skill_policy_prototype,
             skill_policies=trained_skill_policies,
             skill_stop_functions=trained_skill_policies_stop_funcs,
-            skill_max_timesteps=20
+            skill_max_timesteps=50
     )
     # Link hrl_policy and hrl_env, so that hrl_env can use skills
     hrl_env.set_hrl_policy(hrl_policy)
@@ -113,8 +102,8 @@ def run_task(*_):
             low_algo_kwargs={
                 'batch_size': 2500,
                 'max_path_length': 50,
-                'n_itr': 500,
-                'discount': 0.99,
+                'n_itr': 300,
+                'discount': 0.9,
             }
     )
 
@@ -127,14 +116,8 @@ def run_task(*_):
         asa_algo.train(sess=session)
 
 
-## Run directly
-# run_task()
-
 
 ## Run pickled
-# # Erase snapshots from previous instant run
-# import shutil
-# shutil.rmtree('/home/h/holas3/garage/data/local/asa_test/instant_run', ignore_errors=False)
 
 # General experiment settings
 seed = 2                    # Will be ignored if --seed option is used
@@ -165,6 +148,4 @@ run_experiment(
         snapshot_mode="all",
         # Specifies the seed for the experiment  (random seed if None)
         seed=seed,
-        # Plot after each batch
-        # plot=True
 )

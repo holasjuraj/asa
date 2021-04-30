@@ -42,11 +42,11 @@ args = parser.parse_args()
 
 snapshot_file = args.file or \
                 '/home/h/holas3/garage/data/archive/TEST4_Resumed_80itrs_discount0.99/Basic_runs/2020_03_09-21_34--Basic_run_80itrs_6maps_disc099_b5000--s1/itr_3.pkl'
-                # DEBUG For direct runs: path to snapshot file (itr_N.pkl) to start from
+                # For direct runs: path to snapshot file (itr_N.pkl) to start from
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 new_skill_policy_file = args.skill_policy or \
                 '/home/h/holas3/garage/sandbox/asa/data/local/asa-train-new-skill/2020_03_10-15_10--after_itr_3--For_all_disc099_Skill_sLLLs--s1/final.pkl'
-                # DEBUG For direct runs: path to file with new skill policy
+                # For direct runs: path to file with new skill policy
 
 # # DEBUG For runs without loaded skill - to use Minibot*Policy as new skill
 # new_skill_policy_file = None
@@ -150,7 +150,7 @@ def run_task(*_):
                 skill_policy_prototype=skill_policy_prototype,
                 skill_policies=trained_skill_policies,
                 skill_stop_functions=trained_skill_policies_stop_funcs,
-                skill_max_timesteps=50  # TODO? was 20, changed to 50 like in asa_train_new_skill
+                skill_max_timesteps=50
         )
         # Link hrl_policy and hrl_env, so that hrl_env can use skills
         hrl_env.set_hrl_policy(hrl_policy)

@@ -30,7 +30,6 @@ class HierarchizedEnv(Wrapper, Serializable):
         super().__init__(env)
         self._num_orig_skills = num_orig_skills
         self.action_space = Discrete(self._num_orig_skills)
-        # TODO! action_space must change after adding new skill
         self.hrl_policy = None
         if subpath_infos is None:
             subpath_infos = ['env_infos']
@@ -53,7 +52,7 @@ class HierarchizedEnv(Wrapper, Serializable):
     @overrides
     def step(self, action):
         assert(self.hrl_policy is not None)
-        skill_path = skill_rollout(env=TfEnv(self.env),  # TODO? Accept TfEnv in constructor and un-TF obs. space
+        skill_path = skill_rollout(env=TfEnv(self.env),
                                    agent=self.hrl_policy.get_skill_policy(action),
                                    skill_stopping_func=self.hrl_policy.get_skill_stopping_func(action),
                                    max_path_length=self.hrl_policy.skill_max_timesteps,
