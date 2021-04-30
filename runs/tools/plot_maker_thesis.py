@@ -63,8 +63,6 @@ class PlotMakerThesis:
                 'plot_y_tics': (list(range(7)),)
             },
         }
-        # TODO sizing of ideal_asa_bad plots
-        # TODO sizing of 2nd and 3rd integrators plots
 
 
     def do_plots(self):
@@ -102,7 +100,7 @@ class PlotMakerThesis:
                 self.data(env, 'asa')
                     .filter_basic_runs()
                     .filter_itr_from(basic_run_split),
-                env, color='black', label='Base run'
+                env, color='black', label='Base run without ASA skill'
         )
 
         # True ASA runs
@@ -216,11 +214,11 @@ class PlotMakerThesis:
         y_max = 5000 if env == 'mb' else 2250
         legend_loc = 'lower right' if env == 'mb' else 'upper right'
         if env == 'gw':
-            plt.yticks(range(0, 2251, 250), ['0', '', '500', '', '1000', '', '1500', '', '2000', ''])
+            plt.yticks(range(0, 2251, 250), ['0', '', '500', '', '1000', '', '1500', '', '2000', ' '])
         y_label = 'Invocations of new skill' if env == 'gw' else None
         self.tidy_plot(env, w=12, h=10, y_lim=(0, y_max), y_label=y_label)
         plt.legend(ncol=2, loc=legend_loc)
-        self.show_save_plot(f'asa-individual-runs-{env}')
+        self.show_save_plot(f'asa-skill-usage-{env}')
 
 
     def plot_ideal_asa_bad_selected(self, env):
@@ -257,7 +255,7 @@ class PlotMakerThesis:
 
         # Finalize
         y_label = y_label='Average discounted reward' if env == 'gw' else None
-        self.tidy_plot(env, w=12, h=10, y_label=y_label)
+        self.tidy_plot(env, w=12, h=8, y_label=y_label)
         plt.legend(loc='lower right')
         self.show_save_plot(f'ideal-asa-bad-selected-{env}')
 
@@ -270,7 +268,7 @@ class PlotMakerThesis:
         rcParams.update({'figure.autolayout': False})
         params = self.env_params[env]
         fig, _ = plt.subplots(3, 1, sharex='all', sharey='all')
-        fig.subplots_adjust(hspace=0, left=0.12, right=0.97, top=0.99, bottom=0.05)
+        fig.subplots_adjust(hspace=0, left=0.11, right=0.94, top=0.98, bottom=0.07)
 
         # Plot for all three skills
         # color tool: https://www.cssfontstack.com/oldsites/hexcolortool/
@@ -315,11 +313,11 @@ class PlotMakerThesis:
                 plt.ylabel('Average discounted reward')
 
         # Finalize
-        w, h = 12, 25
+        w, h = 12, 20
         plt.gcf().set_size_inches(w=w/2.54, h=h/2.54)   # convert to inches
         plt.xticks(*self.env_params[env]['plot_x_tics'])
         plt.xlabel('Iteration')
-        self.show_save_plot(f'ideal-asa-bad-selected-{env}')
+        self.show_save_plot(f'ideal-asa-bad-all-{env}')
         rcParams.update({'figure.autolayout': True})
 
 
@@ -362,7 +360,8 @@ class PlotMakerThesis:
 
         # Finalize
         y_label = 'Average discounted reward' if labels else None
-        self.tidy_plot(env, w=12, h=10, y_label=y_label, y_hide_numbers=not labels)
+        w = 9.3 if labels else 8
+        self.tidy_plot(env, w=w, h=8, y_label=y_label, y_hide_numbers=not labels)
         self.show_save_plot(f'integrators-{env}-from-itr{res_from+1}')
 
         # Legend
@@ -418,7 +417,7 @@ class PlotMakerThesis:
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         if y_hide_numbers:
-            plt.gca().set_yticklabels([])
+            plt.gca().set_yticklabels([' '] * len(self.env_params[env]['plot_y_tics'][0]))
 
     def show_save_plot(self, name=''):
         """
