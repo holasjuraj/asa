@@ -1,6 +1,5 @@
 from garage.core.serializable import Serializable
 from garage.spaces import Discrete
-# TODO probably change to garage.[tf|theano].spaces.Discrete
 import numpy as np
 
 

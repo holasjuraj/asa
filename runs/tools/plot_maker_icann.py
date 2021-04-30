@@ -236,7 +236,6 @@ def plot_asa_with_ideal_bad_skills():
     plot_range(f_skill_name(true_asa_runs_data, ideal_bad_skill_names[0]), color='#009F00', label='with ideal skill')
     plot_range(f_skill_name(true_asa_runs_data, ideal_bad_skill_names[1]), color='#FF8C00', label='with bad skill')
 
-    # TODO: NPO
     # plot_range(append_prev_itr(f_exp_name(resumed_from_data[11], 'From_all_manual_pnl005_disc09_'), basic_runs_data),
     #            color='r', label='with ASA (TRPO)')
     # plot_range(append_prev_itr(f_exp_name(resumed_from_data[11], 'From_i11_manual_pnl005_disc09_PPO'), basic_runs_data),

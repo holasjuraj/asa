@@ -82,7 +82,6 @@ class AdaptiveSkillAcquisition(BatchPolopt):
     @overrides
     def get_itr_snapshot(self, itr, samples_data):
         res = self._top_algo.get_itr_snapshot(itr, samples_data)
-        # TODO? only include path actions and observations to snapshot in order to speed up saving
         res['paths'] = samples_data['paths']  # to be able to construct Trie from exported snapshot
         res['hrl_policy'] = self._hrl_policy
         res['low_algo_cls'] = self._low_algo_cls
@@ -107,7 +106,6 @@ class AdaptiveSkillAcquisition(BatchPolopt):
                 dict(observations, actions, advantages, rewards, returns, valids, agent_infos, env_infos, paths)
         :return: (bool: make new skill, start_obss, end_obss)
         """
-        # TODO extract Trie parameters
         min_length = 2
         max_length = 5
         action_map = None  # {0: 's', 1: 'L', 2: 'R'}
@@ -116,7 +114,6 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         aggregations = []  # sublist of ['mean', 'most_freq', 'nearest_mean', 'medoid'] or 'all'
         f_score_step_factor = 1.5
 
-        # TODO? share path trie among more batches?
         paths = samples_data['paths']
         path_trie = PathTrie(self._hrl_policy.num_skills)
         for path in paths:
@@ -132,7 +129,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
 
         frequent_paths = path_trie.items(
             action_map=action_map,
-            min_count=10,  # len(paths) * 2,   # TODO? what about this?
+            min_count=10,
             min_f_score=min_f_score,
             max_results=max_results,
             aggregations=aggregations
@@ -146,11 +143,8 @@ class AdaptiveSkillAcquisition(BatchPolopt):
                 f_path['f_score'],
                 pad=max_length*3))
 
-        # return False, None    # DEBUG prevent training of new skill
-        if self._added_skills > 0:
-            return False, None  # DEBUG add only one skill
-        # TODO? some more clever mechanism to decide if we need a new skill?
-        #       As-is, we make new skill if its f-score is more than f_score_step_factor - times greater then previous one.
+        # if self._added_skills > 0:
+        #     return False, None  # DEBUG add only one skill
         if len(frequent_paths) == 0:
             return False, None
         top_subpath = frequent_paths[0]
@@ -173,7 +167,7 @@ class AdaptiveSkillAcquisition(BatchPolopt):
         skill_learning_env = TfEnv(
                 SkillLearningEnv(
                     # base env that was wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
-                    env=self.env.env.env,  # TODO how much do we want to unwrap the environment?
+                    env=self.env.env.env,
                     start_obss=skill_subpath['start_observations'],
                     end_obss=skill_subpath['end_observations']
                 )
@@ -229,13 +223,12 @@ class AdaptiveSkillAcquisition(BatchPolopt):
 
 
     def integrate_new_skill(self, new_skill_id, new_skill_subpath):
-        # TODO? extract integrator parameter
         skill_integration_method = CategoricalMLPSkillIntegrator.Method.SUBPATH_SKILLS_AVG
 
         ## Hierarchized environment
         hrl_env = HierarchizedEnv(
                 # base env that was wrapped in HierarchizedEnv (not fully unwrapped - may be normalized!)
-                env=self.env.env.env,   # TODO how much do we want to unwrap the environment?
+                env=self.env.env.env,
                 num_orig_skills=self._hrl_policy.num_skills
         )
         tf_hrl_env = TfEnv(hrl_env)
@@ -288,5 +281,4 @@ class AdaptiveSkillAcquisition(BatchPolopt):
                 **self._top_algo_kwargs
         )
         self.sampler = self._top_algo.sampler
-        self._top_algo.init_opt()
         self.start_worker(self._tf_sess)

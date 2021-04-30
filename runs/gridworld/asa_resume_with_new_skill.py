@@ -39,25 +39,25 @@ args = parser.parse_args()
 
 snapshot_file = args.file or \
                 '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Basic_runs/2021_02_02-09_50--Basic_run_M2_13r4d_6coin_7step_300itrs--s4/itr_79.pkl'
-                # DEBUG For direct runs: path to snapshot file (itr_N.pkl) to start from
+                # For direct runs: path to snapshot file (itr_N.pkl) to start from
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 new_skill_policy_file = args.skill_policy or \
                 '/home/h/holas3/garage/data/archive/TEST20_Resumed_from_all/Skill_policies/Skill_Jvvv_rpos_b20k_mpl800--good_a0.25/2021_02_17-22_01--after_itr_79--Skill_Jvvv_rpos_b20k_mpl800--s4/final.pkl'
-                # DEBUG For direct runs: path to file with new skill policy
+                # For direct runs: path to file with new skill policy
 
-# DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
-new_skill_policy_file = None
-# skill_policy_exp_name = 'GWTarget'
-# skill_policy_exp_name = 'GWRandom_25'
-skill_policy_exp_name = 'GWStay_25'
-new_skill_subpath = {
-    'actions': [15, 15, 15],
-    'start_observations': np.array([[21, 47,  1,  0, 0, 1, 0, 0, 1],  # in region I, holding coin, some coins picked
-                                    [21, 47,  1,  0, 1, 1, 0, 1, 1],
-                                    [21, 47,  1,  1, 1, 1, 1, 1, 1],
-                                   ])
-}
-# /DEBUG
+# # DEBUG For runs without loaded skill - to use Gridworld*Policy as new skill
+# new_skill_policy_file = None
+# # skill_policy_exp_name = 'GWTarget'
+# # skill_policy_exp_name = 'GWRandom_25'
+# skill_policy_exp_name = 'GWStay_25'
+# new_skill_subpath = {
+#     'actions': [15, 15, 15],
+#     'start_observations': np.array([[21, 47,  1,  0, 0, 1, 0, 0, 1],  # in region I, holding coin, some coins picked
+#                                     [21, 47,  1,  0, 1, 1, 0, 1, 1],
+#                                     [21, 47,  1,  1, 1, 1, 1, 1, 1],
+#                                    ])
+# }
+# # /DEBUG
 
 
 
@@ -100,16 +100,16 @@ def run_task(*_):
             [GridworldTargetPolicy(env_spec=base_env.spec, target=t) for t in skill_targets] + \
             [GridworldStepPolicy(env_spec=base_env.spec, direction=d, n=7) for d in range(4)] + \
             [
-             # new_skill_policy
+             new_skill_policy
              # GridworldTargetPolicy(env_spec=base_env.spec, target=(43, 54))  # DEBUG use GridworldTargetPolicy as new skill
              # GridworldRandomPolicy(env_spec=base_env.spec, n=25)             # DEBUG use GridworldRandomPolicy as new skill
-             GridworldStayPolicy(env_spec=base_env.spec, n=25)             # DEBUG use GridworldStayPolicy as new skill
+             # GridworldStayPolicy(env_spec=base_env.spec, n=25)               # DEBUG use GridworldStayPolicy as new skill
             ]
         trained_skill_policies_stop_funcs = \
                 [pol.skill_stopping_func for pol in trained_skill_policies[:-1]] + \
                 [
-                 # new_skill_stop_func
-                 trained_skill_policies[-1].skill_stopping_func                  # DEBUG use Gridworld*Policy as new skill
+                 new_skill_stop_func
+                 # trained_skill_policies[-1].skill_stopping_func                  # DEBUG use Gridworld*Policy as new skill
                 ]
         skill_policy_prototype = saved_data['hrl_policy'].skill_policy_prototype
 
@@ -165,7 +165,7 @@ def run_task(*_):
                 skill_policy_prototype=skill_policy_prototype,
                 skill_policies=trained_skill_policies,
                 skill_stop_functions=trained_skill_policies_stop_funcs,
-                skill_max_timesteps=150  # TODO? should match number in asa_basic_run
+                skill_max_timesteps=150
         )
         # Link hrl_policy and hrl_env, so that hrl_env can use skills
         hrl_env.set_hrl_policy(hrl_policy)

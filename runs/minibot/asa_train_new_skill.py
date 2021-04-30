@@ -32,7 +32,7 @@ args = parser.parse_args()
 
 snapshot_file = args.file or \
                 '/home/h/holas3/garage/data/local/asa-test/2020_01_30-14_21--Basic_run_25itrs_subpth3to5_b5000--s3/itr_8.pkl'
-                # DEBUG For direct runs: path to snapshot file (itr_N.pkl) from which to train new skill
+                # For direct runs: path to snapshot file (itr_N.pkl) from which to train new skill
 snapshot_name = os.path.splitext(os.path.basename(snapshot_file))[0]
 
 
@@ -85,15 +85,6 @@ def run_task(*_):
                 pad=max_length))
 
         top_subpath = frequent_paths[0]
-        # # DEBUG always use path sLLLs and its parameters (obss)
-        # top_subpath = path_trie.item_for_path([0, 1, 1, 1, 0], action_map=action_map)
-        # if top_subpath is None:
-        #     print('Path sLLLs is not in trie')
-        #     exit(1)
-        # if top_subpath['count'] < 10:
-        #     print('Path sLLLs has only count = {}'.format(top_subpath['count']))
-        #     exit(1)
-        # # /DEBUG
         start_obss = top_subpath['start_observations']
         end_obss   = top_subpath['end_observations']
 
@@ -127,7 +118,7 @@ def run_task(*_):
         low_algo_kwargs['baseline'] = baseline
         low_algo_cls = saved_data['low_algo_cls']
 
-        # DEBUG set custom training params (should`ve been set in asa_basic_run)
+        # Set custom training params (should`ve been set in asa_basic_run)
         low_algo_kwargs['batch_size'] = 2500
         low_algo_kwargs['max_path_length'] = 50
         low_algo_kwargs['n_itr'] = 500
